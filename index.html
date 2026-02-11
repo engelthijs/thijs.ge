@@ -57,12 +57,7 @@
             margin-bottom: 10px;
             font-size: 16px;
         }
-        .tech-stack {
-            font-size: 15px;
-            font-style: italic;
-            color: #333;
-            margin-top: 5px;
-        }
+        /* Links */
         a {
             color: #0000EE;
             text-decoration: underline;
@@ -71,21 +66,26 @@
         a:visited {
             color: #551A8B;
         }
-        /* Table Styles */
-        .info-table {
+        
+        /* GENERAL TABLE STYLES (Used for Tech & Corporate) */
+        table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 15px;
         }
-        .info-table td {
+        td {
             vertical-align: top;
-            padding-bottom: 5px;
+            padding-bottom: 6px;
             padding-right: 20px;
+            font-size: 16px;
         }
         .label {
             font-weight: bold;
-            width: 180px;
+            width: 180px; /* Fixed width for alignment */
+            white-space: nowrap;
         }
+        
+        /* FOOTER */
         .footer {
             margin-top: 60px;
             font-size: 13px;
@@ -133,12 +133,25 @@
     <p>
         While I focus on the solution, I am hands-on with a broad spectrum of industry-standard technologies:
     </p>
-    <ul class="tech-stack">
-        <li><strong>Systems:</strong> ERP, WMS, PIM (Akeneo), TMS, CRM (Salesforce), Service Mgmt (Centix).</li>
-        <li><strong>Integration & iPaaS:</strong> Lobster_data, Jitterbit, Make.com, Zapier, n8n, Workato.</li>
-        <li><strong>Data & BI:</strong> SQL (Advanced), Qlik Cloud, PowerBI.</li>
-        <li><strong>Development:</strong> Mendix (Business Applications), AI-driven automation.</li>
-    </ul>
+    
+    <table>
+        <tr>
+            <td class="label">Systems:</td>
+            <td>ERP, WMS, PIM (Akeneo), TMS, CRM (Salesforce), Service Mgmt (Centix)</td>
+        </tr>
+        <tr>
+            <td class="label">Integration & iPaaS:</td>
+            <td>Lobster_data, Jitterbit, Make.com, Zapier, n8n, Workato</td>
+        </tr>
+        <tr>
+            <td class="label">Data & BI:</td>
+            <td>SQL (Advanced), Qlik Cloud, PowerBI</td>
+        </tr>
+        <tr>
+            <td class="label">Development:</td>
+            <td>Mendix (Business Applications), AI-driven automation</td>
+        </tr>
+    </table>
 
     <h2>PROJECT REFERENCE</h2>
     <p>
@@ -154,7 +167,7 @@
 
     <h2>CORPORATE INFORMATION</h2>
     
-    <table class="info-table">
+    <table>
         <tr>
             <td class="label">Legal Entity:</td>
             <td>Individual Entrepreneur Thijs Jelmer Engel</td>
