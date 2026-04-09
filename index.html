@@ -1,214 +1,363 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thijs Engel - Data Integration & Architecture</title>
-    <style>
-        body {
-            font-family: "Times New Roman", Times, serif;
-            background-color: #ffffff;
-            color: #000000;
-            margin: 40px auto;
-            max-width: 900px;
-            line-height: 1.5;
-            padding: 0 20px;
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Thijs Engel | Data Integration, IT Architecture &amp; Business Consultancy</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "error-container": "#ffdad6",
+                      "on-secondary": "#ffffff",
+                      "secondary-container": "#c58cff",
+                      "inverse-on-surface": "#f3f0ef",
+                      "surface-container-high": "#eae7e7",
+                      "on-surface": "#1c1b1b",
+                      "secondary": "#7a43b0",
+                      "on-error": "#ffffff",
+                      "primary-fixed-dim": "#bfc2ff",
+                      "on-primary-fixed-variant": "#0102ee",
+                      "tertiary": "#23323a",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f6f3f2",
+                      "surface-tint": "#343dff",
+                      "on-tertiary-fixed-variant": "#3a4951",
+                      "on-secondary-fixed": "#2c0051",
+                      "on-surface-variant": "#454557",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-container": "#3a4951",
+                      "on-primary-container": "#a9aeff",
+                      "on-error-container": "#93000a",
+                      "error": "#ba1a1a",
+                      "outline": "#757589",
+                      "on-background": "#1c1b1b",
+                      "surface-container-highest": "#e5e2e1",
+                      "primary-fixed": "#e0e0ff",
+                      "secondary-fixed-dim": "#ddb8ff",
+                      "tertiary-fixed-dim": "#b9c9d3",
+                      "surface-bright": "#fcf9f8",
+                      "on-tertiary-container": "#a7b7c1",
+                      "primary-container": "#0000ee",
+                      "surface": "#fcf9f8",
+                      "inverse-primary": "#bfc2ff",
+                      "surface-container": "#f0eded",
+                      "tertiary-fixed": "#d5e5ef",
+                      "on-tertiary-fixed": "#0e1d25",
+                      "secondary-fixed": "#f0dbff",
+                      "background": "#fcf9f8",
+                      "on-secondary-container": "#54198a",
+                      "surface-dim": "#dcd9d9",
+                      "inverse-surface": "#313030",
+                      "on-tertiary": "#ffffff",
+                      "surface-variant": "#e5e2e1",
+                      "primary": "#0001ab",
+                      "on-secondary-fixed-variant": "#602896",
+                      "outline-variant": "#c5c4da",
+                      "on-primary-fixed": "#00006e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Space Grotesk"],
+                      "body": ["Inter"],
+                      "label": ["Manrope"]
+              }
+            },
+          }
         }
-        h1 {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        h2 {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 35px;
-            margin-bottom: 15px;
-            text-decoration: underline;
-        }
-        .subtitle {
-            font-size: 18px;
-            font-style: italic;
-            margin-bottom: 25px;
-        }
-        .address-block {
-            font-weight: bold;
-            margin-bottom: 25px;
-            font-size: 16px;
-        }
-        hr {
-            border: 0;
-            border-top: 2px solid #000000;
-            margin-top: 30px;
-            margin-bottom: 30px;
-        }
-        p {
-            margin-bottom: 15px;
-            font-size: 16px;
-            text-align: justify;
-        }
-        ul {
-            margin-bottom: 15px;
-            padding-left: 20px;
-        }
-        li {
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-        /* Links */
-        a {
-            color: #0000EE;
-            text-decoration: underline;
-            font-weight: bold;
-        }
-        a:visited {
-            color: #551A8B;
-        }
-        
-        /* TABLES (Tech & Corporate) */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-        td {
-            vertical-align: top;
-            padding-bottom: 6px;
-            padding-right: 20px;
-            font-size: 16px;
-        }
-        .label {
-            font-weight: bold;
-            width: 180px; 
-            white-space: nowrap;
-        }
-        
-        /* FOOTER */
-        .footer {
-            margin-top: 60px;
-            font-size: 13px;
-            border-top: 1px solid #ccc;
-            padding-top: 10px;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Space Grotesk', sans-serif; }
     </style>
 </head>
-<body>
-
-    <h1>THIJS ENGEL</h1>
-    <div class="subtitle">Data Integration, IT Architecture & Business Consultancy</div>
-
-    <div class="address-block">
-        41 Tamar Mephe Street<br>
-        Sighnaghi, Georgia<br>
-        <br>
-        Phone (GE): <a href="tel:+995511711335">+995 511 711 335</a><br>
-        Phone (NL): <a href="tel:+31611240278">+31 6 112 40 278</a><br>
-        Email: <a href="mailto:thijsengel@proton.me">thijsengel@proton.me</a>
-    </div>
-
-    <hr>
-
-    <p>
-        I specialize in designing and building scalable IT architectures that drive operational excellence. 
-        My focus is on helping organizations move beyond fragmented data silos by creating a unified application landscape where information flows seamlessly between systems. 
-        This approach combines deep technical expertise in data integration with a pragmatic understanding of business logistics, ensuring that technology serves the strategy—not the other way around.
-    </p>
-
-    <h2>AREAS OF EXPERTISE</h2>
-    <ul>
-        <li>
-            <strong>Enterprise Data Integration:</strong> Architecting and implementing robust connections between core business systems. Ensuring reliability and real-time data synchronization across complex environments.
-        </li>
-        <li>
-            <strong>Business Intelligence & Analytics:</strong> Transforming raw database entries into strategic assets. By leveraging strong SQL foundations, I build dashboards that provide Finance, Sales, and Logistics teams with a single source of truth.
-        </li>
-        <li>
-            <strong>Process Automation & AI:</strong> Modernizing legacy workflows using Artificial Intelligence and Low-Code solutions to reduce manual entry, minimize error rates, and accelerate throughput.
-        </li>
-    </ul>
-
-    <h2>TECHNICAL PROFICIENCY</h2>
-    <p>
-        While I focus on the solution, I am hands-on with a broad spectrum of industry-standard technologies:
-    </p>
-    
-    <table>
-        <tr>
-            <td class="label">Systems:</td>
-            <td>ERP, WMS, PIM (Akeneo), TMS, CRM (Salesforce), Service Mgmt (Centix)</td>
-        </tr>
-        <tr>
-            <td class="label">Integration & iPaaS:</td>
-            <td>Lobster_data, Jitterbit, Make.com, Zapier, n8n, Workato</td>
-        </tr>
-        <tr>
-            <td class="label">Data & BI:</td>
-            <td>SQL (Advanced), Qlik Cloud, PowerBI</td>
-        </tr>
-        <tr>
-            <td class="label">Development:</td>
-            <td>Mendix (Business Applications), AI-driven automation</td>
-        </tr>
-    </table>
-
-    <h2>PROJECT REFERENCE</h2>
-    <p>
-        <strong>Case Study: Intelligent Document Processing</strong><br>
-        Implementation of an automated financial workflow for a major industrial supplier, integrating OCR technology with the ERP landscape to eliminate manual invoice processing.
-        <br><br>
-        <a href="https://rossum.ai/customer-stories/bus-industrial-tools/" target="_blank">
-            &raquo; Read full case study at Rossum.ai
-        </a>
-    </p>
-
-    <hr>
-
-    <h2>CORPORATE INFORMATION</h2>
-    
-    <table>
-        <tr>
-            <td class="label">Legal Entity:</td>
-            <td>Individual Entrepreneur Thijs Jelmer Engel</td>
-        </tr>
-        <tr>
-            <td class="label">Identification Number:</td>
-            <td>340402264</td>
-        </tr>
-        <tr>
-            <td class="label">Registration Date:</td>
-            <td>09 February 2026</td>
-        </tr>
-        <tr>
-            <td class="label">Bank Name:</td>
-            <td>Bank of Georgia (JSC)</td>
-        </tr>
-        <tr>
-            <td class="label">IBAN (Multi-Currency):</td>
-            <td>GE83 BG00 0000 0611 5882 93</td>
-        </tr>
-        <tr>
-            <td class="label">SWIFT / BIC:</td>
-            <td>BAGAGE22</td>
-        </tr>
-    </table>
-
-    <p>
-        <strong>Official Documentation:</strong><br>
-        <a href="registry.pdf" target="_blank">&raquo; Download Registry Extract (PDF)</a><br>
-        <a href="bank.pdf" target="_blank">&raquo; Download Bank Coordinates (PDF)</a><br>
-        <a href="https://enreg.reestri.gov.ge/main.php?m=new_index&l=en" target="_blank">
-            &raquo; National Agency of Public Registry (Search ID: 340402264)
-        </a>
-    </p>
-
-    <hr>
-
-    <div class="footer">
-        &copy; 2026 Thijs Engel. Registered in Sighnaghi, Georgia. <br>
-        <a href="mailto:thijsengel@proton.me">Contact the Owner</a>
-    </div>
-
-</body>
-</html>
+<body class="bg-surface text-on-surface selection:bg-primary-container selection:text-on-primary">
+<nav class="fixed top-0 w-full z-50 bg-stone-50/80 dark:bg-zinc-950/80 backdrop-blur-2xl shadow-sm dark:shadow-none">
+<div class="max-w-7xl mx-auto flex justify-between items-center px-8 py-5">
+<a class="text-2xl font-bold tracking-tighter text-zinc-900 dark:text-zinc-100 font-['Space_Grotesk']" href="#">Thijs Engel</a>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-zinc-600 dark:text-zinc-400 font-medium hover:text-primary transition-colors duration-200" href="#expertise">Expertise</a>
+<a class="text-zinc-600 dark:text-zinc-400 font-medium hover:text-primary transition-colors duration-200" href="#proficiency">Proficiency</a>
+<a class="text-zinc-600 dark:text-zinc-400 font-medium hover:text-primary transition-colors duration-200" href="#case-studies">Case Studies</a>
+<a class="text-zinc-600 dark:text-zinc-400 font-medium hover:text-primary transition-colors duration-200" href="#contact">Contact</a>
+</div>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold text-sm scale-95 active:scale-90 transition-transform">Let's Connect</button>
+</div>
+</nav>
+<main class="pt-24">
+<!-- Hero Section -->
+<section class="relative min-h-[85vh] flex items-center px-8 overflow-hidden bg-surface">
+<div class="max-w-7xl mx-auto grid gap-12 items-center relative z-10 flex flex-col items-center text-center">
+<div class="space-y-8 max-w-4xl mx-auto flex flex-col items-center">
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label text-xs font-bold tracking-wider uppercase">
+                    Digital Architect &amp; Consultant
+                </div>
+<h1 class="text-5xl md:text-8xl font-bold tracking-tighter leading-[1.1] text-on-surface">
+                    Data Integration, <br/>
+<span class="text-primary">IT Architecture &amp; Business Consultancy.</span>
+</h1>
+<p class="text-xl text-on-surface-variant leading-relaxed max-w-3xl">
+                    I specialize in designing and building scalable IT architectures that drive operational excellence. My focus is on helping organizations move beyond fragmented data silos by creating a unified application landscape where information flows seamlessly between systems.
+                </p>
+<div class="flex flex-wrap gap-4 pt-4 justify-center">
+<a class="bg-primary text-on-primary px-8 py-4 rounded-xl font-label font-bold text-base hover:shadow-xl transition-all" href="#contact">Strategic Consultation</a>
+<a class="flex items-center gap-2 px-8 py-4 rounded-xl font-label font-bold text-base text-primary border-b-2 border-primary/20 hover:border-primary transition-all" href="#case-studies">
+                        View Project Reference
+                        <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,1,171,0.05),transparent_70%)]"></div>
+</section>
+<!-- Expertise Section -->
+<section class="py-32 bg-surface-container-low" id="expertise">
+<div class="max-w-7xl mx-auto px-8">
+<div class="mb-20">
+<p class="font-label text-primary font-bold tracking-widest uppercase mb-4">Core Competencies</p>
+<h2 class="text-4xl md:text-5xl font-bold tracking-tight">Areas of Expertise</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Point 1 -->
+<div class="bg-surface-container-lowest p-10 rounded-xl hover:shadow-lg transition-all border-b-4 border-transparent hover:border-primary group">
+<div class="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">hub</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">Enterprise Data Integration</h3>
+<p class="text-on-surface-variant leading-relaxed">Architecting and implementing robust connections between core business systems. Ensuring reliability and real-time data synchronization across complex environments.</p>
+</div>
+<!-- Point 2 -->
+<div class="bg-surface-container-lowest p-10 rounded-xl hover:shadow-lg transition-all border-b-4 border-transparent hover:border-secondary group">
+<div class="w-14 h-14 rounded-full bg-secondary-fixed flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary text-3xl">query_stats</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">Business Intelligence &amp; Analytics</h3>
+<p class="text-on-surface-variant leading-relaxed">Transforming raw database entries into strategic assets. By leveraging strong SQL foundations, I build dashboards that provide Finance, Sales, and Logistics teams with a single source of truth.</p>
+</div>
+<!-- Point 3 -->
+<div class="bg-surface-container-lowest p-10 rounded-xl hover:shadow-lg transition-all border-b-4 border-transparent hover:border-tertiary group">
+<div class="w-14 h-14 rounded-full bg-tertiary-fixed flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary text-3xl">psychology</span>
+</div>
+<h3 class="text-2xl font-bold mb-4">Process Automation &amp; AI</h3>
+<p class="text-on-surface-variant leading-relaxed">Modernizing legacy workflows using Artificial Intelligence and Low-Code solutions to reduce manual entry, minimize error rates, and accelerate throughput.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Proficiency Section -->
+<section class="py-32 bg-surface" id="proficiency">
+<div class="max-w-7xl mx-auto px-8">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-16">
+<div class="lg:col-span-4">
+<p class="font-label text-primary font-bold tracking-widest uppercase mb-4">Technical Stack</p>
+<h2 class="text-4xl font-bold tracking-tight mb-6">Technical Proficiency</h2>
+<p class="text-on-surface-variant leading-relaxed">
+                        While I focus on the solution, I am hands-on with a broad spectrum of industry-standard technologies focused on interoperability and long-term maintainability.
+                    </p>
+</div>
+<div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<h4 class="font-label font-bold text-xs uppercase tracking-widest text-primary mb-4">Systems</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">ERP</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">WMS</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">PIM (Akeneo)</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">TMS</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">CRM (Salesforce)</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Service Mgmt (Centix)</span>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<h4 class="font-label font-bold text-xs uppercase tracking-widest text-secondary mb-4">Integration &amp; iPaaS</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Lobster_data</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Jitterbit</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Make.com</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Zapier</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">n8n</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Workato</span>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<h4 class="font-label font-bold text-xs uppercase tracking-widest text-on-tertiary-fixed-variant mb-4">Data &amp; BI</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">SQL (Advanced)</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Qlik Cloud</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">PowerBI</span>
+</div>
+</div>
+<div class="p-6 rounded-xl bg-surface-container-low border border-outline-variant/30">
+<h4 class="font-label font-bold text-xs uppercase tracking-widest text-on-surface-variant mb-4">Development</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">Mendix (Business Applications)</span>
+<span class="px-3 py-1.5 bg-surface-container-lowest rounded-lg text-sm font-medium">AI-driven automation</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Project Reference Section -->
+<section class="py-32 bg-surface-container" id="case-studies">
+<div class="max-w-7xl mx-auto px-8">
+<div class="mb-16">
+<p class="font-label text-primary font-bold tracking-widest uppercase mb-4">Project Reference</p>
+<h2 class="text-4xl md:text-5xl font-bold tracking-tight">Success Stories</h2>
+</div>
+<div class="grid grid-cols-1 overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl">
+<div class="p-12 lg:p-16 flex flex-col justify-center">
+<div class="inline-flex items-center gap-2 mb-6">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label text-sm font-bold uppercase tracking-widest text-on-surface-variant">Case Study</span>
+</div>
+<h3 class="text-4xl font-bold mb-6 leading-tight max-w-3xl">Intelligent Document Processing</h3>
+<p class="text-lg text-on-surface-variant leading-relaxed mb-10 max-w-4xl">
+                        Implementation of an automated financial workflow for a major industrial supplier, integrating OCR technology with the ERP landscape to eliminate manual invoice processing.
+                    </p>
+<a class="flex items-center gap-4 text-primary font-bold group w-fit" href="https://rossum.ai" target="_blank">
+                        Read full case study at Rossum.ai
+                        <span class="w-12 h-0.5 bg-primary group-hover:w-16 transition-all"></span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Contact & Form Section -->
+<section class="py-32 bg-surface" id="contact">
+<div class="max-w-7xl mx-auto px-8">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-20">
+<div class="lg:col-span-5">
+<h2 class="text-5xl font-bold tracking-tight mb-8">Ready to evolve your digital architecture?</h2>
+<p class="text-lg text-on-surface-variant mb-12 leading-relaxed">
+                        Available for high-impact consultancy roles and complex architecture projects worldwide. Let's discuss your roadmap.
+                    </p>
+<div class="space-y-8">
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary">mail</span>
+</div>
+<div>
+<p class="text-xs font-label font-bold uppercase tracking-widest text-outline mb-1">Email Inquiry</p>
+<a class="text-lg font-medium hover:text-primary transition-colors" href="mailto:thijsengel@proton.me">thijsengel@proton.me</a>
+</div>
+</div>
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary">phone_iphone</span>
+</div>
+<div>
+<p class="text-xs font-label font-bold uppercase tracking-widest text-outline mb-1">Mobile Access</p>
+<div class="space-y-1">
+<p class="text-lg font-medium">+995 511 711 335 (GE)</p>
+<p class="text-lg font-medium">+31 6 112 40 278 (NL)</p>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary">location_on</span>
+</div>
+<div>
+<p class="text-xs font-label font-bold uppercase tracking-widest text-outline mb-1">Address</p>
+<p class="text-lg font-medium leading-tight">41 Tamar Mephe Street,<br/>Sighnaghi, Georgia</p>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-7">
+<div class="p-10 rounded-2xl bg-surface-container-low">
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-xs font-label font-bold uppercase tracking-widest mb-2 text-on-surface-variant">Full Name</label>
+<input class="w-full bg-surface border-none border-b-2 border-outline-variant focus:border-primary focus:ring-0 px-0 py-3 transition-all" placeholder="Enter your name" type="text"/>
+</div>
+<div>
+<label class="block text-xs font-label font-bold uppercase tracking-widest mb-2 text-on-surface-variant">Company</label>
+<input class="w-full bg-surface border-none border-b-2 border-outline-variant focus:border-primary focus:ring-0 px-0 py-3 transition-all" placeholder="Enter your company" type="text"/>
+</div>
+</div>
+<div>
+<label class="block text-xs font-label font-bold uppercase tracking-widest mb-2 text-on-surface-variant">Project Intent</label>
+<textarea class="w-full bg-surface border-none border-b-2 border-outline-variant focus:border-primary focus:ring-0 px-0 py-3 transition-all" placeholder="Briefly describe your objectives" rows="4"></textarea>
+</div>
+<button class="w-full bg-primary text-on-primary font-label font-bold py-4 rounded-xl hover:shadow-xl transition-all uppercase tracking-widest text-sm" type="submit">Initiate Communication</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Corporate Information Section -->
+<section class="py-24 bg-surface-container-low border-t border-outline-variant/30">
+<div class="max-w-7xl mx-auto px-8">
+<h2 class="text-3xl font-bold tracking-tight mb-12 uppercase">Corporate Information</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-sm">
+<div class="space-y-4">
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">Legal Entity:</span>
+<span>Individual Entrepreneur Thijs Jelmer Engel</span>
+</div>
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">Identification Number:</span>
+<span>340402264</span>
+</div>
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">Registration Date:</span>
+<span>09 February 2026</span>
+</div>
+</div>
+<div class="space-y-4">
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">Bank Name:</span>
+<span>Bank of Georgia (JSC)</span>
+</div>
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">IBAN (Multi-Currency):</span>
+<span>GE83 BG00 0000 0611 5882 93</span>
+</div>
+<div class="grid grid-cols-2 border-b border-outline-variant/20 pb-2">
+<span class="font-bold text-on-surface-variant">SWIFT / BIC:</span>
+<span>BAGAGE22</span>
+</div>
+</div>
+</div>
+<div class="mt-12 flex flex-wrap gap-8">
+<a class="text-primary font-bold text-sm hover:underline" href="#">» Download Registry Extract (PDF)</a>
+<a class="text-primary font-bold text-sm hover:underline" href="#">» Download Bank Coordinates (PDF)</a>
+<a class="text-primary font-bold text-sm hover:underline" href="#">» National Agency of Public Registry (Search ID: 340402264)</a>
+</div>
+</div>
+</section>
+</main>
+<footer class="bg-stone-100 dark:bg-zinc-900 w-full py-16">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-12 px-8 max-w-7xl mx-auto">
+<div class="space-y-2">
+<div class="font-['Space_Grotesk'] font-bold text-lg text-primary">Thijs Engel</div>
+<p class="text-xs text-zinc-500">Registered in Sighnaghi, Georgia.</p>
+</div>
+<div class="flex flex-col md:flex-row items-center gap-8">
+<div class="flex gap-6">
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-primary transition-opacity font-['Inter'] text-xs uppercase tracking-widest" href="#">Privacy Policy</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-primary transition-opacity font-['Inter'] text-xs uppercase tracking-widest" href="#">LinkedIn</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-primary transition-opacity font-['Inter'] text-xs uppercase tracking-widest" href="mailto:thijsengel@proton.me">Email Me</a>
+</div>
+<p class="text-zinc-500 dark:text-zinc-400 font-['Inter'] text-xs uppercase tracking-widest">© 2026 Thijs Engel. Digital Architect &amp; Strategic Consultant.</p>
+</div>
+</div>
+</footer>
+</body></html>
