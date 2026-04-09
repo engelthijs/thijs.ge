@@ -16,10 +16,10 @@ h1, h2 { font-family: 'Space Grotesk', sans-serif; }
 <div id="login" class="text-center space-y-6 p-10">
     <h1 class="text-3xl font-bold tracking-tight">Private Area</h1>
     <p class="text-zinc-500">Enter the password to continue.</p>
-    <form onsubmit="return checkPassword()" class="space-y-4">
+    <form onsubmit="event.preventDefault(); checkPassword();" class="space-y-4">
         <input id="pw" type="password" placeholder="Password"
             class="block mx-auto px-6 py-3 rounded-xl border border-zinc-300 focus:outline-none focus:border-blue-700 text-center text-lg"/>
-        <button type="submit"
+        <button id="btn" type="submit"
             class="bg-blue-800 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all">
             Enter
         </button>
@@ -27,19 +27,69 @@ h1, h2 { font-family: 'Space Grotesk', sans-serif; }
     <p id="error" class="text-red-500 text-sm hidden">Incorrect password.</p>
 </div>
 
-<div id="content" class="hidden text-center p-10 space-y-6">
-    <img src="secret.jpg" alt="" class="max-w-md mx-auto rounded-2xl shadow-2xl"/>
-    <p class="text-zinc-400 text-sm mt-4"><a href="index.html" class="hover:underline">&larr; Back</a></p>
+<div id="content" class="hidden p-10 max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold tracking-tight text-center mb-8">Private Gallery</h1>
+    <div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    <p class="text-zinc-400 text-sm mt-8 text-center"><a href="index.html" class="hover:underline">&larr; Back</a></p>
 </div>
 
 <script>
-function checkPassword() {
+const FUNCTION_URL = 'https://nvclmdrfbtlyergwxqcy.supabase.co/functions/v1/get-private-photos';
+
+async function checkPassword() {
     var input = document.getElementById('pw').value;
-    if (input === 'Rijnlaan131') {
+    var btn = document.getElementById('btn');
+    var error = document.getElementById('error');
+
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+    error.classList.add('hidden');
+
+    try {
+        var res = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: input })
+        });
+
+        if (!res.ok) {
+            error.classList.remove('hidden');
+            btn.textContent = 'Enter';
+            btn.disabled = false;
+            return false;
+        }
+
+        var data = await res.json();
+        var gallery = document.getElementById('gallery');
+
+        if (data.photos.length === 0) {
+            gallery.innerHTML = '<p class="text-zinc-500 col-span-full text-center">No files uploaded yet.</p>';
+        } else {
+            data.photos.forEach(function(photo) {
+                if (photo.type === 'video') {
+                    var video = document.createElement('video');
+                    video.src = photo.url;
+                    video.controls = true;
+                    video.className = 'w-full rounded-2xl shadow-lg';
+                    gallery.appendChild(video);
+                } else {
+                    var img = document.createElement('img');
+                    img.src = photo.url;
+                    img.alt = photo.name;
+                    img.className = 'w-full rounded-2xl shadow-lg hover:shadow-2xl transition-all cursor-pointer';
+                    img.onclick = function() { window.open(photo.url, '_blank'); };
+                    gallery.appendChild(img);
+                }
+            });
+        }
+
         document.getElementById('login').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
-    } else {
-        document.getElementById('error').classList.remove('hidden');
+    } catch (e) {
+        error.textContent = 'Connection error. Try again.';
+        error.classList.remove('hidden');
+        btn.textContent = 'Enter';
+        btn.disabled = false;
     }
     return false;
 }
