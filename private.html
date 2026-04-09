@@ -29,6 +29,26 @@ h1, h2 { font-family: 'Space Grotesk', sans-serif; }
 
 <div id="content" class="hidden p-10 max-w-5xl mx-auto">
     <h1 class="text-3xl font-bold tracking-tight text-center mb-8">Private Gallery</h1>
+
+    <!-- UPLOAD SECTION -->
+    <div class="mb-10 max-w-lg mx-auto">
+        <div id="dropzone" class="border-2 border-dashed border-zinc-300 rounded-2xl p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+             onclick="document.getElementById('fileInput').click();"
+             ondragover="event.preventDefault();this.classList.add('border-blue-500','bg-blue-50');"
+             ondragleave="this.classList.remove('border-blue-500','bg-blue-50');"
+             ondrop="event.preventDefault();this.classList.remove('border-blue-500','bg-blue-50');handleFiles(event.dataTransfer.files);">
+            <p class="text-zinc-400 text-lg mb-1">Drop files here or click to browse</p>
+            <p class="text-zinc-300 text-sm">Photos & videos</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden" onchange="handleFiles(this.files);"/>
+        <div id="upload-list" class="mt-4 space-y-2"></div>
+        <div id="upload-actions" class="hidden mt-4 flex gap-3 justify-center">
+            <button onclick="uploadAll()" id="upload-btn" class="bg-blue-800 text-white px-6 py-2 rounded-xl font-bold hover:shadow-xl transition-all">Upload</button>
+            <button onclick="clearFiles()" class="bg-zinc-200 text-zinc-600 px-6 py-2 rounded-xl font-bold hover:bg-zinc-300 transition-all">Cancel</button>
+        </div>
+        <p id="upload-status" class="text-sm mt-3 text-center hidden"></p>
+    </div>
+
     <div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
     <div class="mt-10 text-center">
         <a href="game.html" class="inline-block bg-indigo-900 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all">Play Neon Pong</a>
@@ -39,6 +59,111 @@ h1, h2 { font-family: 'Space Grotesk', sans-serif; }
 
 <script>
 const FUNCTION_URL = 'https://nvclmdrfbtlyergwxqcy.supabase.co/functions/v1/get-private-photos';
+const UPLOAD_URL = 'https://nvclmdrfbtlyergwxqcy.supabase.co/functions/v1/upload-private';
+var pendingFiles = [];
+var currentPassword = sessionStorage.getItem('private_pw') || '';
+
+function handleFiles(fileList) {
+    for (var i = 0; i < fileList.length; i++) {
+        if (!pendingFiles.some(function(f) { return f.name === fileList[i].name && f.size === fileList[i].size; })) {
+            pendingFiles.push(fileList[i]);
+        }
+    }
+    renderFileList();
+}
+
+function renderFileList() {
+    var list = document.getElementById('upload-list');
+    var actions = document.getElementById('upload-actions');
+    list.innerHTML = '';
+    if (pendingFiles.length === 0) { actions.classList.add('hidden'); return; }
+    actions.classList.remove('hidden');
+    pendingFiles.forEach(function(f, i) {
+        var sz = f.size < 1e6 ? (f.size / 1024).toFixed(0) + ' KB' : (f.size / 1e6).toFixed(1) + ' MB';
+        var isVid = f.type.startsWith('video/');
+        var div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-zinc-100 rounded-lg px-4 py-2';
+        div.innerHTML = '<span class="text-sm text-zinc-600 truncate flex-1">' + (isVid ? '🎬 ' : '🖼 ') + f.name + ' <span class="text-zinc-400">(' + sz + ')</span></span>' +
+            '<button onclick="removeFile(' + i + ')" class="text-zinc-400 hover:text-red-500 ml-3 text-lg">&times;</button>';
+        list.appendChild(div);
+    });
+}
+
+function removeFile(i) { pendingFiles.splice(i, 1); renderFileList(); }
+function clearFiles() { pendingFiles = []; renderFileList(); document.getElementById('upload-status').classList.add('hidden'); }
+
+async function uploadAll() {
+    if (pendingFiles.length === 0) return;
+    var btn = document.getElementById('upload-btn');
+    var status = document.getElementById('upload-status');
+    btn.textContent = 'Uploading...';
+    btn.disabled = true;
+    status.classList.remove('hidden');
+    status.className = 'text-sm mt-3 text-center text-zinc-500';
+    status.textContent = 'Uploading ' + pendingFiles.length + ' file(s)...';
+
+    var formData = new FormData();
+    formData.append('password', currentPassword);
+    pendingFiles.forEach(function(f) { formData.append('files', f); });
+
+    try {
+        var res = await fetch(UPLOAD_URL, { method: 'POST', body: formData });
+        var data = await res.json();
+
+        if (!res.ok) {
+            status.className = 'text-sm mt-3 text-center text-red-500';
+            status.textContent = data.error || 'Upload failed.';
+        } else {
+            var ok = data.results.filter(function(r) { return r.success; }).length;
+            var fail = data.results.filter(function(r) { return !r.success; }).length;
+            status.className = 'text-sm mt-3 text-center text-green-600';
+            status.textContent = ok + ' file(s) uploaded!' + (fail > 0 ? ' ' + fail + ' failed.' : '');
+            pendingFiles = [];
+            renderFileList();
+            // Reload gallery
+            setTimeout(function() { reloadGallery(); }, 500);
+        }
+    } catch (e) {
+        status.className = 'text-sm mt-3 text-center text-red-500';
+        status.textContent = 'Connection error. Try again.';
+    }
+    btn.textContent = 'Upload';
+    btn.disabled = false;
+}
+
+async function reloadGallery() {
+    var gallery = document.getElementById('gallery');
+    gallery.innerHTML = '<p class="text-zinc-400 col-span-full text-center">Loading...</p>';
+    try {
+        var res = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: currentPassword })
+        });
+        var data = await res.json();
+        gallery.innerHTML = '';
+        if (data.photos.length === 0) {
+            gallery.innerHTML = '<p class="text-zinc-500 col-span-full text-center">No files uploaded yet.</p>';
+        } else {
+            data.photos.forEach(function(photo) {
+                if (photo.type === 'video') {
+                    var video = document.createElement('video');
+                    video.src = photo.url;
+                    video.controls = true;
+                    video.className = 'w-full rounded-2xl shadow-lg';
+                    gallery.appendChild(video);
+                } else {
+                    var img = document.createElement('img');
+                    img.src = photo.url;
+                    img.alt = photo.name;
+                    img.className = 'w-full rounded-2xl shadow-lg hover:shadow-2xl transition-all cursor-pointer';
+                    img.onclick = function() { window.open(photo.url, '_blank'); };
+                    gallery.appendChild(img);
+                }
+            });
+        }
+    } catch (e) {}
+}
 
 async function checkPassword() {
     var input = document.getElementById('pw').value;
@@ -87,7 +212,9 @@ async function checkPassword() {
             });
         }
 
+        currentPassword = input;
         sessionStorage.setItem('private_access', 'true');
+        sessionStorage.setItem('private_pw', input);
         document.getElementById('login').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
     } catch (e) {
