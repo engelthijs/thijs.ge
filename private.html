@@ -100,29 +100,55 @@ async function uploadAll() {
     btn.disabled = true;
     status.classList.remove('hidden');
     status.className = 'text-sm mt-3 text-center text-zinc-500';
-    status.textContent = 'Uploading ' + pendingFiles.length + ' file(s)...';
-
-    var formData = new FormData();
-    formData.append('password', currentPassword);
-    pendingFiles.forEach(function(f) { formData.append('files', f); });
+    status.textContent = 'Getting upload URLs...';
 
     try {
-        var res = await fetch(UPLOAD_URL, { method: 'POST', body: formData });
+        // Step 1: Get signed upload URLs from Edge Function
+        var fileList = pendingFiles.map(function(f) { return { name: f.name }; });
+        var res = await fetch(UPLOAD_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: currentPassword, files: fileList })
+        });
         var data = await res.json();
 
         if (!res.ok) {
             status.className = 'text-sm mt-3 text-center text-red-500';
             status.textContent = data.error || 'Upload failed.';
-        } else {
-            var ok = data.results.filter(function(r) { return r.success; }).length;
-            var fail = data.results.filter(function(r) { return !r.success; }).length;
-            status.className = 'text-sm mt-3 text-center text-green-600';
-            status.textContent = ok + ' file(s) uploaded!' + (fail > 0 ? ' ' + fail + ' failed.' : '');
-            pendingFiles = [];
-            renderFileList();
-            // Reload gallery
-            setTimeout(function() { reloadGallery(); }, 500);
+            btn.textContent = 'Upload';
+            btn.disabled = false;
+            return;
         }
+
+        // Step 2: Upload each file directly to Storage via signed URL
+        var ok = 0, fail = 0;
+        for (var i = 0; i < pendingFiles.length; i++) {
+            var urlInfo = data.urls[i];
+            status.textContent = 'Uploading ' + (i + 1) + '/' + pendingFiles.length + ': ' + pendingFiles[i].name;
+
+            if (!urlInfo || urlInfo.error || !urlInfo.uploadUrl) {
+                fail++;
+                continue;
+            }
+
+            try {
+                var upRes = await fetch(urlInfo.uploadUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': pendingFiles[i].type },
+                    body: pendingFiles[i]
+                });
+                if (upRes.ok) ok++;
+                else fail++;
+            } catch (e) {
+                fail++;
+            }
+        }
+
+        status.className = 'text-sm mt-3 text-center text-green-600';
+        status.textContent = ok + ' file(s) uploaded!' + (fail > 0 ? ' ' + fail + ' failed.' : '');
+        pendingFiles = [];
+        renderFileList();
+        setTimeout(function() { reloadGallery(); }, 500);
     } catch (e) {
         status.className = 'text-sm mt-3 text-center text-red-500';
         status.textContent = 'Connection error. Try again.';

@@ -14,9 +14,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const formData = await req.formData();
-    const password = formData.get("password") as string;
-    const files = formData.getAll("files") as File[];
+    // Accepts JSON with password + list of filenames
+    // Returns signed upload URLs for each file (browser uploads directly to Storage)
+    const { password, files } = await req.json();
 
     if (password !== PASSWORD) {
       return new Response(JSON.stringify({ error: "Wrong password" }), {
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!files || files.length === 0) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
       return new Response(JSON.stringify({ error: "No files provided" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -37,33 +37,29 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const results: { name: string; success: boolean; error?: string }[] = [];
+    const urls: { name: string; path: string; uploadUrl?: string; error?: string }[] = [];
 
     for (const file of files) {
-      // Sanitize filename: keep extension, add timestamp to prevent collisions
       const ext = file.name.split(".").pop() || "bin";
       const baseName = file.name
         .replace(/\.[^.]+$/, "")
         .replace(/[^a-zA-Z0-9_-]/g, "_")
         .substring(0, 50);
-      const timestamp = Date.now();
+      const timestamp = Date.now() + Math.floor(Math.random() * 1000);
       const path = `${baseName}_${timestamp}.${ext}`;
 
-      const { error } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from("private")
-        .upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-        });
+        .createSignedUploadUrl(path);
 
       if (error) {
-        results.push({ name: file.name, success: false, error: error.message });
+        urls.push({ name: file.name, path, error: error.message });
       } else {
-        results.push({ name: file.name, success: true });
+        urls.push({ name: file.name, path, uploadUrl: data.signedUrl });
       }
     }
 
-    return new Response(JSON.stringify({ results }), {
+    return new Response(JSON.stringify({ urls }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
