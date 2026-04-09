@@ -30,6 +30,9 @@ h1, h2 { font-family: 'Space Grotesk', sans-serif; }
 <div id="content" class="hidden p-10 max-w-5xl mx-auto">
     <h1 class="text-3xl font-bold tracking-tight text-center mb-8">Private Gallery</h1>
     <div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    <div class="mt-10 text-center">
+        <a href="game.html" class="inline-block bg-indigo-900 text-white px-8 py-3 rounded-xl font-bold hover:shadow-xl transition-all">Play Neon Pong Arena</a>
+    </div>
     <p class="text-zinc-400 text-sm mt-8 text-center"><a href="index.html" class="hover:underline">&larr; Back</a></p>
 </div>
 
@@ -83,6 +86,7 @@ async function checkPassword() {
             });
         }
 
+        sessionStorage.setItem('private_access', 'true');
         document.getElementById('login').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
     } catch (e) {
