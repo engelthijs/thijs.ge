@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         const { data } = await supabase.storage
           .from("private")
           .createSignedUrl(file.path, 3600);
-        return { name: file.name, url: data?.signedUrl, type: file.type };
+        return { name: file.name, path: file.path, url: data?.signedUrl, type: file.type };
       })
     );
 
