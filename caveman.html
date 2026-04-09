@@ -195,6 +195,7 @@ let trees = [];
 let aiTimer = 0;
 let lastTime = 0;
 let resTimer = 0;
+let bgMusic = null;
 
 // ========== AUDIO ==========
 let ac = null;
@@ -895,8 +896,26 @@ function spawnUnit(type) {
     }
 }
 
+function startMusic() {
+    if (!bgMusic) {
+        bgMusic = new Audio('Waterflame - Glorious Morning Extended.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.4;
+    }
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(() => {});
+}
+
+function stopMusic() {
+    if (bgMusic) {
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+    }
+}
+
 function beginGame() {
     initAudio();
+    startMusic();
     document.getElementById('menu').classList.add('hidden');
     document.getElementById('hud').classList.add('active');
     document.getElementById('unit-panel').classList.add('active');
@@ -994,6 +1013,7 @@ function rematchGame() {
 
 function toMenu() {
     running = false;
+    stopMusic();
     if (anim) cancelAnimationFrame(anim);
     if (channel) { channel.unsubscribe(); channel = null; }
     roomCode = null; mode = null;
