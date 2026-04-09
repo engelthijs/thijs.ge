@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Caveman Wars</title>
+<script>
+if (!sessionStorage.getItem('private_access')) window.location.href = 'private.html';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+body { background: #1a1a2e; overflow: hidden; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; }
+canvas { display: block; cursor: default; }
+
+/* ===== MENU ===== */
+#menu { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #87CEEB 0%, #4a8f3f 60%, #3d2b1f 80%, #2a1a0e 100%); }
+#menu.hidden { display: none; }
+.menu-box { text-align: center; background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); padding: 50px 60px; border-radius: 24px; border: 2px solid rgba(255,255,255,0.1); }
+.menu-title { font-family: 'Bungee Shade', cursive; font-size: 3rem; color: #f4a460; text-shadow: 3px 3px 0 #8B4513, 0 0 40px rgba(244,164,96,0.4); margin-bottom: 8px; }
+.menu-sub { font-family: 'Bungee', cursive; font-size: 0.8rem; letter-spacing: 6px; color: rgba(255,255,255,0.4); margin-bottom: 40px; }
+.mbtn { display: block; width: 100%; font-family: 'Bungee', cursive; font-size: 0.85rem; letter-spacing: 2px; padding: 16px 32px; margin-bottom: 12px; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.mbtn-play { background: linear-gradient(135deg, #d4872a, #b8651a); color: #fff; box-shadow: 0 4px 20px rgba(212,135,42,0.3); }
+.mbtn-play:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(212,135,42,0.5); }
+.mbtn-mp { background: rgba(255,255,255,0.08); color: #ddd; border: 1px solid rgba(255,255,255,0.15); }
+.mbtn-mp:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); }
+.mbtn-sm { padding: 10px 20px; font-size: 0.7rem; }
+.room-screen { display: none; margin-top: 20px; }
+.room-screen.active { display: block; }
+.room-code-display { font-family: 'Bungee', cursive; font-size: 2.5rem; letter-spacing: 10px; color: #f4a460; text-shadow: 0 0 20px rgba(244,164,96,0.5); margin: 16px 0; }
+.room-input { font-family: 'Bungee', cursive; font-size: 1.5rem; letter-spacing: 6px; text-align: center; background: rgba(255,255,255,0.05); border: 2px solid rgba(244,164,96,0.3); border-radius: 10px; color: #f4a460; padding: 12px 20px; width: 220px; outline: none; text-transform: uppercase; }
+.room-input:focus { border-color: #f4a460; }
+.status { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 12px; }
+.status.ok { color: #5f5; }
+.diff-row { display: flex; gap: 8px; justify-content: center; margin: 16px 0 0; }
+.dbtn { font-family: 'Bungee', cursive; font-size: 0.55rem; letter-spacing: 1px; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.4); cursor: pointer; }
+.dbtn.active { border-color: #f4a460; color: #f4a460; background: rgba(244,164,96,0.15); }
+
+/* ===== HUD ===== */
+#hud { position: fixed; top: 0; left: 0; right: 0; z-index: 50; display: none; padding: 12px 20px; pointer-events: none; }
+#hud.active { display: flex; justify-content: space-between; align-items: flex-start; }
+.hud-side { pointer-events: none; }
+.hud-bar-bg { width: 280px; height: 18px; background: rgba(0,0,0,0.5); border-radius: 9px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+.hud-bar { height: 100%; border-radius: 9px; transition: width 0.3s; }
+.hud-bar-p1 { background: linear-gradient(90deg, #4a9eff, #2ecc71); }
+.hud-bar-p2 { background: linear-gradient(90deg, #e74c3c, #f39c12); }
+.hud-label { font-family: 'Bungee', cursive; font-size: 0.55rem; letter-spacing: 2px; color: rgba(255,255,255,0.5); margin-bottom: 4px; }
+.hud-res { font-family: 'Bungee', cursive; font-size: 0.8rem; color: #f4a460; margin-top: 6px; }
+
+/* ===== UNIT PANEL ===== */
+#unit-panel { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; display: none; padding: 12px 20px; background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%); }
+#unit-panel.active { display: flex; justify-content: center; gap: 12px; }
+.unit-btn { pointer-events: all; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 18px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); cursor: pointer; transition: all 0.2s; min-width: 90px; }
+.unit-btn:hover { border-color: #f4a460; background: rgba(244,164,96,0.15); transform: translateY(-3px); }
+.unit-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+.unit-btn.disabled:hover { border-color: rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); transform: none; }
+.unit-icon { font-size: 1.5rem; }
+.unit-name { font-family: 'Bungee', cursive; font-size: 0.5rem; letter-spacing: 1px; color: #fff; }
+.unit-cost { font-size: 0.6rem; color: #f4a460; }
+.unit-key { font-size: 0.5rem; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+/* ===== OVERLAYS ===== */
+#game-over { position: fixed; inset: 0; z-index: 90; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 24px; background: rgba(0,0,0,0.85); }
+#game-over.active { display: flex; }
+.go-text { font-family: 'Bungee Shade', cursive; font-size: 2.5rem; }
+.go-win { color: #2ecc71; text-shadow: 0 0 40px rgba(46,204,113,0.5); }
+.go-lose { color: #e74c3c; text-shadow: 0 0 40px rgba(231,76,60,0.5); }
+
+#exit-btn { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 55; display: none; pointer-events: all; }
+#exit-btn.active { display: block; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+<div class="menu-box">
+    <h1 class="menu-title">CAVEMAN WARS</h1>
+    <p class="menu-sub">Battle for survival</p>
+    <div id="scr-main" class="room-screen active">
+        <button class="mbtn mbtn-play" onclick="startSP()">Battle</button>
+        <button class="mbtn mbtn-mp" onclick="showScr('scr-create')">Create Room</button>
+        <button class="mbtn mbtn-mp" onclick="showScr('scr-join')">Join Room</button>
+        <div class="diff-row">
+            <button class="dbtn active" onclick="setDiff('easy',this)">Easy</button>
+            <button class="dbtn" onclick="setDiff('normal',this)">Normal</button>
+            <button class="dbtn" onclick="setDiff('hard',this)">Hard</button>
+        </div>
+    </div>
+    <div id="scr-create" class="room-screen">
+        <p class="status">Your room code</p>
+        <div class="room-code-display" id="rc-display">----</div>
+        <p class="status" id="cr-status">Creating...</p>
+        <button class="mbtn mbtn-mp mbtn-sm" onclick="copyRC()">Copy Code</button>
+        <button class="mbtn mbtn-mp mbtn-sm" onclick="cancelMP()" style="margin-top:8px">Back</button>
+    </div>
+    <div id="scr-join" class="room-screen">
+        <p class="status">Enter Room Code</p>
+        <input class="room-input" id="join-inp" maxlength="4" placeholder="XXXX" onkeyup="this.value=this.value.toUpperCase()"/>
+        <div style="margin-top:14px">
+            <button class="mbtn mbtn-play mbtn-sm" onclick="joinRoom()">Join</button>
+        </div>
+        <p class="status" id="jr-status"></p>
+        <button class="mbtn mbtn-mp mbtn-sm" onclick="cancelMP()" style="margin-top:8px">Back</button>
+    </div>
+</div>
+</div>
+
+<div id="hud">
+    <div class="hud-side">
+        <div class="hud-label">YOUR CAVE</div>
+        <div class="hud-bar-bg"><div class="hud-bar hud-bar-p1" id="hp1" style="width:100%"></div></div>
+        <div class="hud-res">🦴 <span id="res-display">0</span></div>
+    </div>
+    <div class="hud-side" style="text-align:right">
+        <div class="hud-label">ENEMY CAVE</div>
+        <div class="hud-bar-bg"><div class="hud-bar hud-bar-p2" id="hp2" style="width:100%"></div></div>
+    </div>
+</div>
+
+<div id="unit-panel">
+    <div class="unit-btn" onclick="spawnUnit('clubber')" id="btn-clubber">
+        <div class="unit-icon">🏏</div>
+        <div class="unit-name">Clubber</div>
+        <div class="unit-cost">🦴 20</div>
+        <div class="unit-key">[1]</div>
+    </div>
+    <div class="unit-btn" onclick="spawnUnit('thrower')" id="btn-thrower">
+        <div class="unit-icon">🪨</div>
+        <div class="unit-name">Thrower</div>
+        <div class="unit-cost">🦴 40</div>
+        <div class="unit-key">[2]</div>
+    </div>
+    <div class="unit-btn" onclick="spawnUnit('brute')" id="btn-brute">
+        <div class="unit-icon">💀</div>
+        <div class="unit-name">Brute</div>
+        <div class="unit-cost">🦴 75</div>
+        <div class="unit-key">[3]</div>
+    </div>
+    <div class="unit-btn" onclick="spawnUnit('shaman')" id="btn-shaman">
+        <div class="unit-icon">🔥</div>
+        <div class="unit-name">Shaman</div>
+        <div class="unit-cost">🦴 60</div>
+        <div class="unit-key">[4]</div>
+    </div>
+</div>
+
+<div id="game-over">
+    <div class="go-text" id="go-text">Victory!</div>
+    <button class="mbtn mbtn-play" onclick="rematchGame()">Rematch</button>
+    <button class="mbtn mbtn-mp mbtn-sm" onclick="toMenu()">Menu</button>
+</div>
+
+<button class="mbtn mbtn-mp mbtn-sm" id="exit-btn" onclick="toMenu()">✕ Exit</button>
+
+<canvas id="gc"></canvas>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+// ========== SUPABASE ==========
+const SB_URL = 'https://nvclmdrfbtlyergwxqcy.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52Y2xtZHJmYnRseWVyZ3d4cWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3Mzc2NDAsImV4cCI6MjA5MTMxMzY0MH0.csdHyENjox45kkA8UA12eniA7YHe_H35xy27NgFt43k';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// ========== CONSTANTS ==========
+const W = 1200, H = 600;
+const GROUND_Y = 460;
+const BASE_HP = 500;
+const UNIT_TYPES = {
+    clubber: { hp: 40, dmg: 8, speed: 1.2, range: 30, atkSpeed: 0.8, cost: 20, color: '#c8956c', size: 1 },
+    thrower: { hp: 25, dmg: 12, speed: 1.0, range: 150, atkSpeed: 1.2, cost: 40, color: '#a07850', size: 0.9 },
+    brute:   { hp: 100, dmg: 18, speed: 0.6, range: 35, atkSpeed: 1.5, cost: 75, color: '#8B4513', size: 1.4 },
+    shaman:  { hp: 30, dmg: 6, speed: 0.9, range: 120, atkSpeed: 1.0, cost: 60, color: '#9b59b6', size: 0.95, healer: true }
+};
+const AI_DIFFS = {
+    easy:   { spawnRate: 3500, types: ['clubber','clubber','thrower'], resMult: 0.8 },
+    normal: { spawnRate: 2500, types: ['clubber','thrower','brute','clubber'], resMult: 1.0 },
+    hard:   { spawnRate: 1800, types: ['clubber','thrower','brute','shaman','brute'], resMult: 1.3 }
+};
+
+// ========== STATE ==========
+let canvas, ctx;
+let mode = null; // 'sp','host','guest'
+let diff = 'easy';
+let roomCode = null, channel = null;
+let running = false, anim = null;
+let resources = 50;
+let p1HP = BASE_HP, p2HP = BASE_HP;
+let units = []; // { type, team, x, y, hp, maxHp, atkTimer, state, frame }
+let projectiles = []; // { x, y, vx, vy, dmg, team }
+let particles = [];
+let clouds = [];
+let trees = [];
+let aiTimer = 0;
+let lastTime = 0;
+let resTimer = 0;
+
+// ========== AUDIO ==========
+let ac = null;
+function initAudio() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); }
+
+function snd(type) {
+    if (!ac) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    switch(type) {
+        case 'hit':
+            o.type='square'; o.frequency.setValueAtTime(180,t);
+            o.frequency.exponentialRampToValueAtTime(80,t+0.08);
+            g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
+            o.start(t); o.stop(t+0.1); break;
+        case 'throw':
+            o.type='sine'; o.frequency.setValueAtTime(800,t);
+            o.frequency.exponentialRampToValueAtTime(400,t+0.15);
+            g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+            o.start(t); o.stop(t+0.15); break;
+        case 'die':
+            o.type='sawtooth'; o.frequency.setValueAtTime(200,t);
+            o.frequency.exponentialRampToValueAtTime(50,t+0.3);
+            g.gain.setValueAtTime(0.08,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+            o.start(t); o.stop(t+0.3); break;
+        case 'spawn':
+            o.type='triangle'; o.frequency.setValueAtTime(300,t);
+            o.frequency.exponentialRampToValueAtTime(500,t+0.1);
+            g.gain.setValueAtTime(0.06,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+            o.start(t); o.stop(t+0.12); break;
+        case 'heal':
+            o.type='sine'; o.frequency.setValueAtTime(600,t);
+            o.frequency.setValueAtTime(800,t+0.1);
+            o.frequency.setValueAtTime(1000,t+0.2);
+            g.gain.setValueAtTime(0.05,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+            o.start(t); o.stop(t+0.3); break;
+        case 'win':
+            [261,329,392,523].forEach((f,i)=>{
+                const oo=ac.createOscillator(),gg=ac.createGain();
+                oo.connect(gg);gg.connect(ac.destination);oo.type='sine';
+                oo.frequency.setValueAtTime(f,t+i*0.2);
+                gg.gain.setValueAtTime(0.1,t+i*0.2);gg.gain.exponentialRampToValueAtTime(0.001,t+i*0.2+0.4);
+                oo.start(t+i*0.2);oo.stop(t+i*0.2+0.4);
+            }); return;
+        case 'lose':
+            o.type='sawtooth'; o.frequency.setValueAtTime(300,t);
+            o.frequency.exponentialRampToValueAtTime(60,t+0.8);
+            g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.8);
+            o.start(t); o.stop(t+0.8); break;
+        case 'basehit':
+            o.type='square'; o.frequency.setValueAtTime(100,t);
+            o.frequency.exponentialRampToValueAtTime(50,t+0.2);
+            g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
+            o.start(t); o.stop(t+0.2); break;
+    }
+}
+
+// ========== CANVAS ==========
+function setupCanvas() {
+    canvas = document.getElementById('gc');
+    ctx = canvas.getContext('2d');
+    function resize() {
+        const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+        canvas.width = W; canvas.height = H;
+        canvas.style.width = (W*s)+'px'; canvas.style.height = (H*s)+'px';
+    }
+    resize();
+    window.addEventListener('resize', resize);
+}
+
+// ========== SCENERY GENERATION ==========
+function generateScenery() {
+    clouds = [];
+    for (let i = 0; i < 6; i++) {
+        clouds.push({ x: Math.random()*W, y: 40+Math.random()*80, w: 80+Math.random()*120, speed: 0.1+Math.random()*0.2 });
+    }
+    trees = [];
+    for (let i = 0; i < 14; i++) {
+        const tx = 120 + Math.random()*(W-240);
+        trees.push({
+            x: tx,
+            type: Math.random()>0.5 ? 'pine' : 'round',
+            h: 50+Math.random()*60,
+            layer: Math.random()>0.5 ? 0 : 1
+        });
+    }
+    trees.sort((a,b) => a.layer - b.layer || a.x - b.x);
+}
+
+// ========== DRAWING ==========
+function drawBg() {
+    // Sky gradient
+    const sky = ctx.createLinearGradient(0,0,0,GROUND_Y);
+    sky.addColorStop(0, '#4ab3f4');
+    sky.addColorStop(0.6, '#87CEEB');
+    sky.addColorStop(1, '#b5d8e8');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0,0,W,GROUND_Y);
+
+    // Sun
+    ctx.beginPath();
+    ctx.arc(W-120, 80, 40, 0, Math.PI*2);
+    ctx.fillStyle = '#fff4a3';
+    ctx.shadowColor = '#fff4a3';
+    ctx.shadowBlur = 40;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Clouds
+    clouds.forEach(c => {
+        c.x += c.speed;
+        if (c.x > W + 100) c.x = -c.w;
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        for (let j = 0; j < 3; j++) {
+            ctx.beginPath();
+            ctx.arc(c.x + j*c.w*0.3, c.y + Math.sin(j*1.5)*10, c.w*0.2, 0, Math.PI*2);
+            ctx.fill();
+        }
+    });
+
+    // Mountains
+    ctx.fillStyle = '#4a8f3f';
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(100, GROUND_Y-120);
+    ctx.lineTo(250, GROUND_Y-60);
+    ctx.lineTo(400, GROUND_Y-150);
+    ctx.lineTo(550, GROUND_Y-80);
+    ctx.lineTo(700, GROUND_Y-130);
+    ctx.lineTo(850, GROUND_Y-50);
+    ctx.lineTo(1000, GROUND_Y-110);
+    ctx.lineTo(W, GROUND_Y-70);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.fill();
+
+    // Far mountains
+    ctx.fillStyle = '#3d7a35';
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(200, GROUND_Y-90);
+    ctx.lineTo(350, GROUND_Y-40);
+    ctx.lineTo(600, GROUND_Y-100);
+    ctx.lineTo(800, GROUND_Y-60);
+    ctx.lineTo(1050, GROUND_Y-85);
+    ctx.lineTo(W, GROUND_Y-50);
+    ctx.lineTo(W, GROUND_Y);
+    ctx.fill();
+
+    // Trees (back layer)
+    trees.filter(t=>t.layer===0).forEach(drawTree);
+
+    // Ground
+    const grd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    grd.addColorStop(0, '#8B7355');
+    grd.addColorStop(0.3, '#6B5340');
+    grd.addColorStop(1, '#4a3728');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, GROUND_Y, W, H-GROUND_Y);
+
+    // Ground texture
+    ctx.fillStyle = '#7a6345';
+    for (let i = 0; i < 30; i++) {
+        ctx.fillRect(((i*47+13)%W), GROUND_Y+2, 30+((i*7)%20), 3);
+    }
+    ctx.fillStyle = '#997a5a';
+    for (let i = 0; i < 20; i++) {
+        ctx.fillRect(((i*73+29)%W), GROUND_Y+8+((i*3)%15), 15+((i*11)%15), 2);
+    }
+
+    // Grass tufts along ground line
+    ctx.strokeStyle = '#5a8a3a';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 50; i++) {
+        const gx = (i * 25 + 7) % W;
+        ctx.beginPath();
+        ctx.moveTo(gx, GROUND_Y);
+        ctx.lineTo(gx-4, GROUND_Y-8-((i*3)%6));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(gx, GROUND_Y);
+        ctx.lineTo(gx+3, GROUND_Y-10-((i*5)%5));
+        ctx.stroke();
+    }
+
+    // Trees (front layer)
+    trees.filter(t=>t.layer===1).forEach(drawTree);
+}
+
+function drawTree(t) {
+    const ty = GROUND_Y;
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(t.x-4, ty-t.h*0.4, 8, t.h*0.4);
+    if (t.type === 'pine') {
+        for (let j = 0; j < 3; j++) {
+            ctx.fillStyle = `rgb(${40+j*15}, ${100+j*20}, ${30+j*10})`;
+            ctx.beginPath();
+            ctx.moveTo(t.x, ty - t.h + j*t.h*0.2);
+            ctx.lineTo(t.x - 20 + j*5, ty - t.h*0.3 + j*t.h*0.15);
+            ctx.lineTo(t.x + 20 - j*5, ty - t.h*0.3 + j*t.h*0.15);
+            ctx.fill();
+        }
+    } else {
+        ctx.beginPath();
+        ctx.arc(t.x, ty - t.h*0.6, t.h*0.35, 0, Math.PI*2);
+        ctx.fillStyle = '#3d8a2e';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(t.x-t.h*0.15, ty - t.h*0.7, t.h*0.25, 0, Math.PI*2);
+        ctx.fillStyle = '#4a9a3a';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(t.x+t.h*0.18, ty - t.h*0.55, t.h*0.2, 0, Math.PI*2);
+        ctx.fillStyle = '#357a28';
+        ctx.fill();
+    }
+}
+
+function drawBase(x, team) {
+    const hp = team === 1 ? p1HP : p2HP;
+    const hpPct = hp / BASE_HP;
+    const bw = 70, bh = 80;
+    const bx = team === 1 ? x - bw/2 : x - bw/2;
+    const by = GROUND_Y - bh;
+
+    // Cave body
+    ctx.fillStyle = '#5a4a3a';
+    ctx.beginPath();
+    ctx.ellipse(x, GROUND_Y, bw/2+10, bh*0.9, 0, Math.PI, 0);
+    ctx.fill();
+
+    // Cave opening
+    ctx.fillStyle = '#1a1008';
+    ctx.beginPath();
+    ctx.ellipse(x, GROUND_Y, bw*0.35, bh*0.55, 0, Math.PI, 0);
+    ctx.fill();
+
+    // Cave highlight
+    ctx.fillStyle = '#6a5a4a';
+    ctx.beginPath();
+    ctx.ellipse(x - 10, GROUND_Y - bh*0.5, 15, 25, -0.3, Math.PI, 0);
+    ctx.fill();
+
+    // Rocks around
+    ctx.fillStyle = '#7a6a5a';
+    [[x-35,GROUND_Y-5,10],[x+30,GROUND_Y-8,8],[x-20,GROUND_Y-2,6]].forEach(r => {
+        ctx.beginPath(); ctx.arc(r[0],r[1],r[2],0,Math.PI*2); ctx.fill();
+    });
+
+    // Fire in cave
+    if (hpPct > 0.2) {
+        const ft = Date.now()*0.005;
+        ctx.fillStyle = `rgba(255,${150+Math.sin(ft)*50},0,${0.5+Math.sin(ft*1.3)*0.2})`;
+        ctx.beginPath();
+        ctx.ellipse(x, GROUND_Y-10, 8+Math.sin(ft)*3, 15+Math.sin(ft*1.5)*5, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,255,100,${0.3+Math.sin(ft*2)*0.1})`;
+        ctx.beginPath();
+        ctx.ellipse(x, GROUND_Y-8, 4, 8+Math.sin(ft*2)*3, 0, Math.PI, 0);
+        ctx.fill();
+    }
+
+    // Damage cracks
+    if (hpPct < 0.6) {
+        ctx.strokeStyle = '#2a1a0a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x-15, by+20); ctx.lineTo(x-5, by+40); ctx.lineTo(x-10, by+55);
+        ctx.stroke();
+    }
+    if (hpPct < 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(x+10, by+15); ctx.lineTo(x+20, by+35);
+        ctx.stroke();
+    }
+}
+
+function drawCaveman(u) {
+    const t = UNIT_TYPES[u.type];
+    const s = t.size;
+    const dir = u.team === 1 ? 1 : -1;
+    const x = u.x, y = GROUND_Y;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(dir, 1);
+
+    // Walk bob
+    let bob = 0, armAngle = 0, legAngle = 0;
+    if (u.state === 'walk') {
+        bob = Math.sin(u.frame * 0.15) * 3;
+        legAngle = Math.sin(u.frame * 0.15) * 0.4;
+        armAngle = Math.sin(u.frame * 0.15 + 1) * 0.3;
+    } else if (u.state === 'attack') {
+        armAngle = -1.5 + Math.sin(u.atkAnim * 5) * 1.5;
+    }
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12*s, 4*s, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Legs
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = 4*s;
+    ctx.lineCap = 'round';
+    // Left leg
+    ctx.save();
+    ctx.translate(-4*s, -8*s);
+    ctx.rotate(legAngle);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, 14*s); ctx.stroke();
+    ctx.restore();
+    // Right leg
+    ctx.save();
+    ctx.translate(4*s, -8*s);
+    ctx.rotate(-legAngle);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, 14*s); ctx.stroke();
+    ctx.restore();
+
+    // Body
+    ctx.fillStyle = t.color;
+    ctx.beginPath();
+    ctx.ellipse(0, -22*s + bob, 10*s, 14*s, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Fur/cloth
+    ctx.fillStyle = u.type === 'shaman' ? '#7b2fff' : '#a08060';
+    ctx.beginPath();
+    ctx.ellipse(0, -18*s + bob, 11*s, 6*s, 0, 0, Math.PI);
+    ctx.fill();
+
+    // Arm + weapon
+    ctx.save();
+    ctx.translate(8*s, -26*s + bob);
+    ctx.rotate(armAngle);
+    // Arm
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = 3.5*s;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(12*s, 8*s); ctx.stroke();
+    // Weapon
+    if (u.type === 'clubber' || u.type === 'brute') {
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(10*s, 5*s, 4*s, 16*s);
+        ctx.fillStyle = '#7a7a7a';
+        ctx.beginPath(); ctx.arc(12*s, 22*s, 5*s, 0, Math.PI*2); ctx.fill();
+    } else if (u.type === 'thrower') {
+        ctx.fillStyle = '#888';
+        ctx.beginPath(); ctx.arc(12*s, 8*s, 4*s, 0, Math.PI*2); ctx.fill();
+    } else if (u.type === 'shaman') {
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(10*s, 3*s, 3*s, 18*s);
+        // Skull on staff
+        ctx.fillStyle = '#e8dcc8';
+        ctx.beginPath(); ctx.arc(11.5*s, 1*s, 4*s, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath(); ctx.arc(10*s, 0, 1.2*s, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(13*s, 0, 1.2*s, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Head
+    ctx.fillStyle = t.color;
+    ctx.beginPath();
+    ctx.arc(0, -36*s + bob, 8*s, 0, Math.PI*2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = u.type === 'shaman' ? '#fff' : '#3a2a1a';
+    ctx.beginPath();
+    ctx.arc(0, -40*s + bob, 7*s, Math.PI, 0);
+    ctx.fill();
+    // Messy hair strands
+    for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i*3*s, -44*s + bob);
+        ctx.lineTo(i*4*s + Math.sin(u.frame*0.1+i)*2, -48*s + bob - Math.abs(i)*2*s);
+        ctx.strokeStyle = u.type === 'shaman' ? '#ddd' : '#3a2a1a';
+        ctx.lineWidth = 1.5*s;
+        ctx.stroke();
+    }
+
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-3*s, -36*s + bob, 2.5*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3*s, -36*s + bob, 2.5*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(-2.5*s, -36*s + bob, 1.2*s, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3.5*s, -36*s + bob, 1.2*s, 0, Math.PI*2); ctx.fill();
+
+    // Mouth
+    if (u.state === 'attack') {
+        ctx.fillStyle = '#600';
+        ctx.beginPath();
+        ctx.arc(0, -31*s + bob, 3*s, 0, Math.PI);
+        ctx.fill();
+    }
+
+    // HP bar
+    if (u.hp < u.maxHp) {
+        const bw = 20*s, bh = 3;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-bw/2, -52*s, bw, bh);
+        ctx.fillStyle = u.hp/u.maxHp > 0.3 ? '#2ecc71' : '#e74c3c';
+        ctx.fillRect(-bw/2, -52*s, bw * (u.hp/u.maxHp), bh);
+    }
+
+    ctx.restore();
+
+    // Heal aura for shaman
+    if (u.type === 'shaman' && u.state === 'attack') {
+        ctx.strokeStyle = `rgba(123,47,255,${0.3+Math.sin(u.frame*0.1)*0.2})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, GROUND_Y - 20, 40 + Math.sin(u.frame*0.08)*10, 0, Math.PI*2);
+        ctx.stroke();
+    }
+}
+
+function drawProjectile(p) {
+    ctx.fillStyle = '#888';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+function drawParticles() {
+    for (const p of particles) {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ========== GAME LOGIC ==========
+function spawnUnitAt(type, team) {
+    const t = UNIT_TYPES[type];
+    const x = team === 1 ? 70 : W - 70;
+    units.push({
+        type, team, x, y: GROUND_Y,
+        hp: t.hp, maxHp: t.hp,
+        atkTimer: 0, atkAnim: 0,
+        state: 'walk', frame: Math.random()*100|0,
+        id: Math.random().toString(36).substr(2,6)
+    });
+}
+
+function updateUnits(dt) {
+    for (const u of units) {
+        u.frame++;
+        const t = UNIT_TYPES[u.type];
+        const dir = u.team === 1 ? 1 : -1;
+
+        // Find nearest enemy
+        let nearest = null, nearDist = Infinity;
+        for (const e of units) {
+            if (e.team === u.team || e.hp <= 0) continue;
+            const d = Math.abs(e.x - u.x);
+            if (d < nearDist) { nearDist = d; nearest = e; }
+        }
+
+        // Check distance to enemy base
+        const baseX = u.team === 1 ? W - 50 : 50;
+        const baseDist = Math.abs(u.x - baseX);
+
+        // Shaman heals allies instead of attacking enemies
+        if (t.healer) {
+            let healTarget = null, healDist = Infinity;
+            for (const a of units) {
+                if (a.team !== u.team || a === u || a.hp >= a.maxHp || a.hp <= 0) continue;
+                const d = Math.abs(a.x - u.x);
+                if (d < healDist && d < t.range) { healDist = d; healTarget = a; }
+            }
+            if (healTarget) {
+                u.state = 'attack';
+                u.atkTimer += dt;
+                u.atkAnim += dt;
+                if (u.atkTimer >= t.atkSpeed) {
+                    u.atkTimer = 0;
+                    healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + 10);
+                    snd('heal');
+                    spawnParticles(healTarget.x, GROUND_Y-20, '#9b59b6', 5);
+                }
+            } else if (nearDist <= t.range && nearest) {
+                // Attack if no one to heal
+                u.state = 'attack';
+                u.atkTimer += dt;
+                u.atkAnim += dt;
+                if (u.atkTimer >= t.atkSpeed) {
+                    u.atkTimer = 0;
+                    nearest.hp -= t.dmg;
+                    snd('hit');
+                    spawnParticles(nearest.x, GROUND_Y-20, '#e74c3c', 4);
+                }
+            } else {
+                u.state = 'walk';
+                u.x += t.speed * dir;
+                u.atkAnim = 0;
+            }
+        } else if (nearDist <= t.range && nearest) {
+            u.state = 'attack';
+            u.atkTimer += dt;
+            u.atkAnim += dt;
+            if (u.atkTimer >= t.atkSpeed) {
+                u.atkTimer = 0;
+                if (t.range > 50) {
+                    // Ranged attack
+                    projectiles.push({
+                        x: u.x, y: GROUND_Y - 25,
+                        vx: (nearest.x - u.x) > 0 ? 5 : -5,
+                        vy: -2,
+                        dmg: t.dmg, team: u.team
+                    });
+                    snd('throw');
+                } else {
+                    nearest.hp -= t.dmg;
+                    snd('hit');
+                    spawnParticles(nearest.x, GROUND_Y-20, '#e74c3c', 4);
+                }
+            }
+        } else if (baseDist < 40) {
+            // Attack base
+            u.state = 'attack';
+            u.atkTimer += dt;
+            u.atkAnim += dt;
+            if (u.atkTimer >= t.atkSpeed) {
+                u.atkTimer = 0;
+                if (u.team === 1) { p2HP -= t.dmg; snd('basehit'); }
+                else { p1HP -= t.dmg; snd('basehit'); }
+                spawnParticles(baseX, GROUND_Y-30, '#f39c12', 6);
+            }
+        } else {
+            u.state = 'walk';
+            u.x += t.speed * dir;
+            u.atkAnim = 0;
+        }
+    }
+
+    // Remove dead units
+    for (let i = units.length-1; i >= 0; i--) {
+        if (units[i].hp <= 0) {
+            snd('die');
+            spawnParticles(units[i].x, GROUND_Y-15, '#8B4513', 10);
+            // Give resources for kill
+            if (units[i].team === 2 && (mode === 'sp' || mode === 'host')) {
+                resources += Math.floor(UNIT_TYPES[units[i].type].cost * 0.3);
+            }
+            units.splice(i, 1);
+        }
+    }
+}
+
+function updateProjectiles(dt) {
+    for (let i = projectiles.length-1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // gravity
+
+        // Hit detection
+        let hit = false;
+        for (const u of units) {
+            if (u.team === p.team || u.hp <= 0) continue;
+            if (Math.abs(u.x - p.x) < 15 && p.y > GROUND_Y - 50) {
+                u.hp -= p.dmg;
+                snd('hit');
+                spawnParticles(p.x, p.y, '#e74c3c', 4);
+                hit = true;
+                break;
+            }
+        }
+
+        if (hit || p.y > GROUND_Y || p.x < 0 || p.x > W) {
+            projectiles.splice(i, 1);
+        }
+    }
+}
+
+function updateAI(dt) {
+    if (mode !== 'sp') return;
+    const d = AI_DIFFS[diff];
+    aiTimer += dt * 1000;
+    if (aiTimer >= d.spawnRate) {
+        aiTimer = 0;
+        const type = d.types[Math.floor(Math.random() * d.types.length)];
+        spawnUnitAt(type, 2);
+    }
+}
+
+function spawnParticles(x, y, color, count) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random()-0.5)*4,
+            vy: -Math.random()*4-1,
+            life: 1,
+            decay: 0.02+Math.random()*0.02,
+            color,
+            size: 2+Math.random()*3
+        });
+    }
+}
+
+function updateParticles() {
+    for (let i = particles.length-1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.vy += 0.1;
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+
+// ========== MULTIPLAYER ==========
+async function createRoom() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    roomCode = '';
+    for (let i = 0; i < 4; i++) roomCode += chars[Math.floor(Math.random()*chars.length)];
+    document.getElementById('rc-display').textContent = roomCode;
+    document.getElementById('cr-status').textContent = 'Waiting for opponent...';
+    document.getElementById('cr-status').className = 'status';
+
+    channel = sb.channel('cw-'+roomCode, { config: { broadcast: { self: false } } });
+    channel.on('broadcast', { event: 'join' }, () => {
+        document.getElementById('cr-status').textContent = 'Opponent connected!';
+        document.getElementById('cr-status').className = 'status ok';
+        setTimeout(() => { mode = 'host'; beginGame(); }, 500);
+    });
+    channel.on('broadcast', { event: 'spawn' }, (p) => { spawnUnitAt(p.payload.type, 2); });
+    channel.on('broadcast', { event: 'rematch' }, () => { rematchGame(); });
+    await channel.subscribe();
+}
+
+async function joinRoom() {
+    roomCode = document.getElementById('join-inp').value.trim().toUpperCase();
+    if (roomCode.length !== 4) { document.getElementById('jr-status').textContent='Enter 4-char code'; return; }
+    document.getElementById('jr-status').textContent = 'Connecting...';
+
+    channel = sb.channel('cw-'+roomCode, { config: { broadcast: { self: false } } });
+    channel.on('broadcast', { event: 'state' }, (p) => {
+        const s = p.payload;
+        p1HP = s.p1;
+        p2HP = s.p2;
+        // Sync units from host
+        units = s.units.map(u => ({...u}));
+        projectiles = s.proj.map(p => ({...p}));
+    });
+    channel.on('broadcast', { event: 'gameover' }, (p) => {
+        showGameOver(p.payload.winner);
+    });
+    channel.on('broadcast', { event: 'rematch' }, () => { rematchGame(); });
+    await channel.subscribe();
+    await channel.send({ type: 'broadcast', event: 'join', payload: {} });
+
+    document.getElementById('jr-status').textContent = 'Connected!';
+    document.getElementById('jr-status').className = 'status ok';
+    mode = 'guest';
+    setTimeout(() => beginGame(), 800);
+}
+
+let syncTimer = 0;
+function broadcastSync(dt) {
+    if (!channel || mode !== 'host') return;
+    syncTimer += dt;
+    if (syncTimer >= 0.1) { // 10 fps sync
+        syncTimer = 0;
+        channel.send({ type: 'broadcast', event: 'state', payload: {
+            p1: p1HP, p2: p2HP,
+            units: units.map(u => ({ type:u.type, team:u.team, x:u.x, hp:u.hp, maxHp:u.maxHp, state:u.state, frame:u.frame, atkTimer:u.atkTimer, atkAnim:u.atkAnim||0 })),
+            proj: projectiles.map(p => ({ x:p.x, y:p.y, vx:p.vx, vy:p.vy, dmg:p.dmg, team:p.team }))
+        }});
+    }
+}
+
+// ========== GAME FLOW ==========
+function spawnUnit(type) {
+    const t = UNIT_TYPES[type];
+    if (resources < t.cost) return;
+    resources -= t.cost;
+    snd('spawn');
+
+    if (mode === 'guest') {
+        channel.send({ type: 'broadcast', event: 'spawn', payload: { type } });
+        // Guest spawns on team 2 (right side)
+        spawnUnitAt(type, 2);
+    } else {
+        spawnUnitAt(type, 1);
+        if (channel && mode === 'host') {
+            // Don't broadcast - host controls simulation
+        }
+    }
+}
+
+function beginGame() {
+    initAudio();
+    document.getElementById('menu').classList.add('hidden');
+    document.getElementById('hud').classList.add('active');
+    document.getElementById('unit-panel').classList.add('active');
+    document.getElementById('exit-btn').classList.add('active');
+    document.getElementById('game-over').classList.remove('active');
+
+    resources = 50;
+    p1HP = BASE_HP; p2HP = BASE_HP;
+    units = []; projectiles = []; particles = [];
+    aiTimer = 0; resTimer = 0; syncTimer = 0;
+    generateScenery();
+
+    running = true;
+    lastTime = performance.now();
+    if (anim) cancelAnimationFrame(anim);
+    loop();
+}
+
+function loop() {
+    if (!running) return;
+    anim = requestAnimationFrame(loop);
+
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    // Resource generation
+    resTimer += dt;
+    if (resTimer >= 0.5) {
+        resTimer = 0;
+        resources += 3;
+    }
+
+    // Only host/SP runs simulation
+    if (mode !== 'guest') {
+        updateUnits(dt);
+        updateProjectiles(dt);
+        updateAI(dt);
+        broadcastSync(dt);
+
+        // Win check
+        if (p2HP <= 0) { p2HP = 0; showGameOver('p1'); return; }
+        if (p1HP <= 0) { p1HP = 0; showGameOver('p2'); return; }
+    }
+
+    updateParticles();
+
+    // Render
+    drawBg();
+    drawBase(50, 1);
+    drawBase(W-50, 2);
+
+    // Sort units by x for proper layering
+    units.sort((a,b) => a.x - b.x);
+    units.forEach(drawCaveman);
+    projectiles.forEach(drawProjectile);
+    drawParticles();
+
+    // HUD updates
+    document.getElementById('hp1').style.width = (p1HP/BASE_HP*100)+'%';
+    document.getElementById('hp2').style.width = (p2HP/BASE_HP*100)+'%';
+    document.getElementById('res-display').textContent = Math.floor(resources);
+
+    // Update button states
+    ['clubber','thrower','brute','shaman'].forEach(type => {
+        const btn = document.getElementById('btn-'+type);
+        if (resources < UNIT_TYPES[type].cost) btn.classList.add('disabled');
+        else btn.classList.remove('disabled');
+    });
+}
+
+function showGameOver(winner) {
+    running = false;
+    const goText = document.getElementById('go-text');
+    if ((winner === 'p1' && mode !== 'guest') || (winner === 'p2' && mode === 'guest')) {
+        goText.textContent = 'VICTORY!';
+        goText.className = 'go-text go-win';
+        snd('win');
+    } else {
+        goText.textContent = 'DEFEATED';
+        goText.className = 'go-text go-lose';
+        snd('lose');
+    }
+    document.getElementById('game-over').classList.add('active');
+
+    if (channel && mode === 'host') {
+        channel.send({ type: 'broadcast', event: 'gameover', payload: { winner } });
+    }
+}
+
+function rematchGame() {
+    if (channel) channel.send({ type: 'broadcast', event: 'rematch', payload: {} });
+    beginGame();
+}
+
+function toMenu() {
+    running = false;
+    if (anim) cancelAnimationFrame(anim);
+    if (channel) { channel.unsubscribe(); channel = null; }
+    roomCode = null; mode = null;
+    document.getElementById('menu').classList.remove('hidden');
+    document.getElementById('hud').classList.remove('active');
+    document.getElementById('unit-panel').classList.remove('active');
+    document.getElementById('exit-btn').classList.remove('active');
+    document.getElementById('game-over').classList.remove('active');
+    showScr('scr-main');
+}
+
+function startSP() { mode = 'sp'; beginGame(); }
+
+function showScr(id) {
+    document.querySelectorAll('.room-screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if (id === 'scr-create') createRoom();
+    if (id === 'scr-join') document.getElementById('join-inp').focus();
+}
+
+function setDiff(d, btn) {
+    diff = d;
+    document.querySelectorAll('.dbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function copyRC() {
+    navigator.clipboard.writeText(roomCode);
+    event.target.textContent = 'Copied!';
+    setTimeout(() => event.target.textContent = 'Copy Code', 1200);
+}
+
+function cancelMP() {
+    if (channel) { channel.unsubscribe(); channel = null; }
+    roomCode = null;
+    showScr('scr-main');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+    if (!running) return;
+    if (e.key === '1') spawnUnit('clubber');
+    if (e.key === '2') spawnUnit('thrower');
+    if (e.key === '3') spawnUnit('brute');
+    if (e.key === '4') spawnUnit('shaman');
+});
+
+// Init
+setupCanvas();
+generateScenery();
+
+// Draw menu background
+function menuBg() {
+    if (!document.getElementById('menu').classList.contains('hidden')) {
+        drawBg();
+        // Draw some idle cavemen
+        const t = Date.now() * 0.001;
+        for (let i = 0; i < 4; i++) {
+            const mx = 200 + i * 200 + Math.sin(t + i) * 20;
+            drawCaveman({ type: ['clubber','thrower','brute','shaman'][i], team: 1, x: mx, hp: 100, maxHp: 100, state: 'walk', frame: (Date.now()/30+i*20)|0, atkTimer: 0, atkAnim: 0 });
+        }
+    }
+    requestAnimationFrame(menuBg);
+}
+menuBg();
+
+// Expose
+window.startSP = startSP;
+window.showScr = showScr;
+window.setDiff = setDiff;
+window.copyRC = copyRC;
+window.cancelMP = cancelMP;
+window.joinRoom = joinRoom;
+window.spawnUnit = spawnUnit;
+window.rematchGame = rematchGame;
+window.toMenu = toMenu;
+
+});
+</script>
+</body>
+</html>
