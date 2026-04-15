@@ -66,48 +66,49 @@ var SB_URL='https://nvclmdrfbtlyergwxqcy.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52Y2xtZHJmYnRseWVyZ3d4cWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3Mzc2NDAsImV4cCI6MjA5MTMxMzY0MH0.csdHyENjox45kkA8UA12eniA7YHe_H35xy27NgFt43k';
 var sb=window.supabase.createClient(SB_URL,SB_KEY);
 
-// ===== CONFIG (faithful to original Age of War) =====
-// Internal resolution - scales to fill screen
+// ===== CONFIG (all values from original Godot source) =====
 var W=1200,H=600,GY=480;
-// Scrollable world
-var WORLD_W=2100;
+var WORLD_W=2400;
 var P_BASE_X=130,E_BASE_X=WORLD_W-130;
 var P_SPAWN_X=220,E_SPAWN_X=WORLD_W-220;
 var camX=0,camTargetX=0;
 var mouseRawX=0,mouseRawY=0;
 var viewScale=1;
-var cW=W,cH=H; // logical canvas size (updated on resize)
+var cW=W,cH=H;
+var scrollKeys={left:false,right:false};
 
 var AGE_NAMES=['Caveman','Medieval','Renaissance','Modern','Future'];
 var EVO_COST=[4000,14000,45000,200000];
 var BASE_HP=[500,1100,2000,3200,4700];
 var START_GOLD=175;
 var MOVE_SPD=50;
-var MELEE_RANGE=30,TURRET_RANGE=500;
+var MELEE_RANGE=30;
 var SPEC_CD=100;
 var MAX_QUEUE=5;
+// [name, hp, dmg, range, atkSpd, cost, reward, trainTime, isRanged]
+// Attack speeds & ranges from original Godot source (animation frames / 30fps)
 var AGE_UNITS=[
- [['Club Man',70,10,MELEE_RANGE,.8,15,20,.5,false],['Slingshot',50,5,150,1.2,25,33,1,true],['Dino Rider',120,40,MELEE_RANGE,1.5,100,130,2,false]],
- [['Sword Man',120,20,MELEE_RANGE,.8,50,75,.5,false],['Archer',90,12,170,1.2,75,98,1,true],['Knight',300,80,MELEE_RANGE,1.5,500,650,2,false]],
- [['Dueler',240,40,MELEE_RANGE,.8,200,260,.5,false],['Musketeer',130,25,180,1.2,400,520,1,true],['Cannoneer',600,150,MELEE_RANGE,1.5,1000,1300,2,false]],
- [['Infantry',500,80,MELEE_RANGE,.8,1500,1950,.5,false],['Gunner',350,50,190,1.2,2000,2600,1,true],['Tank',1500,300,MELEE_RANGE,1.5,7000,9100,2,false]],
- [["God's Blade",1100,160,MELEE_RANGE,.8,5000,6500,.5,false],['Blaster',600,100,200,1.2,6000,7800,1,true],['War Machine',3000,500,MELEE_RANGE,1.5,20000,26000,2,false],['Super Soldier',20000,300,200,.8,150000,0,10,true]]
+ [['Club Man',70,10,28,.77,15,20,.5,false],['Slingshot',50,5,200,1.33,25,33,1,true],['Dino Rider',120,40,87,1.67,100,130,2,false]],
+ [['Sword Man',120,20,30,1.57,50,75,.5,false],['Archer',90,12,200,1.57,75,98,1,true],['Knight',300,80,91,2.0,500,650,2,false]],
+ [['Dueler',240,40,43,1.93,200,260,.5,false],['Musketeer',130,25,270,1.53,400,520,1,true],['Cannoneer',600,150,50,2.17,1000,1300,2,false]],
+ [['Infantry',500,80,46,3.0,1500,1950,.5,false],['Gunner',350,50,350,.7,2000,2600,1,true],['Tank',1500,300,150,3.5,7000,9100,2,false]],
+ [["God's Blade",1100,160,40,2.17,5000,6500,.5,false],['Blaster',600,100,360,1.0,6000,7800,1,true],['War Machine',3000,500,131,1.83,20000,26000,2,false],['Super Soldier',20000,300,360,1.0,150000,0,10,true]]
 ];
-// Turret data matched to original: [age][type] = [dmg, range, atkSpd, cost]
+// Turret data from Godot source: [dmg, range, atkSpd (anim frames/30), cost]
 var TURRET_DATA=[
- [[15,400,1.5,100],[2,300,0.3,200],[40,500,2.0,500]],         // Cave: Rock Sling, Egg Auto, Catapult
- [[40,500,1.5,500],[60,500,1.5,750],[300,500,2.5,1000]],      // Knight: Catapult, Fire Catapult, Oil
- [[60,600,1.2,1500],[120,600,1.5,3000],[120,600,2.0,6000]],   // Medieval: Small Cannon, Large Cannon, Explosive
- [[60,600,0.3,7500],[120,600,1.2,9000],[80,600,0.3,14000]],   // Military: MG Turret, Rocket, Double Turret
- [[100,700,0.8,24000],[50,700,0.2,40000],[50,700,0.6,100000]] // Future: Titanium, Laser, Ion Cannon
+ [[15,350,1.13,100],[2,350,0.33,200],[40,550,1.83,500]],
+ [[40,550,3.3,500],[60,550,3.3,750],[300,276,2.57,1000]],
+ [[60,600,1.5,1500],[120,600,2.67,3000],[120,600,2.67,6000]],
+ [[60,600,1.5,7500],[120,600,1.33,9000],[80,600,1.33,14000]],
+ [[100,600,1.33,24000],[50,800,0.13,40000],[50,1100,0.13,100000]]
 ];
-var SLOT_COST=[1000,3000,7500]; // cost for tower slots 2, 3, 4 (slot 1 is free)
+var SLOT_COST=[1000,3000,7500];
 var TURRET_NAMES=[
  ['Rock Sling','Egg Auto','Catapult'],['Catapult','Fire Cat.','Oil Pot'],
  ['Sm. Cannon','Lg. Cannon','Explosive'],['MG Turret','Rocket','Dbl. Turret'],
  ['Titanium','Laser','Ion Cannon']
 ];
-var SPECIALS=[['Rock Rain','rain',25,80],['Arrow Storm','rain',35,150],['Healing','heal',0,30],['Bombing Run','bomb',10,10],['Laser Sweep','laser',20,600]];
+var SPECIALS=[['Rock Rain','rain',25,80],['Arrow Storm','rain',35,150],['Healing','heal',0,30],['Bombing Run','bomb',10,500],['Laser Sweep','laser',20,600]];
 var AI_AGE_TIME=[180,200,220,240];
 var DIFF_MULT={easy:.8,normal:1,hard:1.25,impossible:1.5};
 
@@ -118,24 +119,27 @@ var TYPE_F=['melee','range','tank'];
 var SHEET_FW=[[93,192,192],[96,192,192],[192,192,192],[192,192,330],[192,384,202]];
 var SHEET_H=96;
 var N_WALK=8,N_ATK=8;
-// Unit display heights: [age][tier] - BIGGER for faithful look
+// Unit display heights — proportional to original (smaller = more battlefield visible)
 var UNIT_H=[
-  [62,58,90],   // cave: clubman, slingshot, dino rider (BIG)
-  [64,60,85],   // medival
-  [62,60,88],   // knight
-  [64,62,72],   // miltary (tank is actual tank, not as tall)
-  [66,64,80]    // future
+  [40,36,58],   // cave: clubman, slingshot, dino rider
+  [42,38,55],   // knight
+  [42,38,58],   // medival
+  [44,40,48],   // miltary (tank is vehicle)
+  [46,42,55]    // future
 ];
-var BASE_H=170; // base display height
-var SUPER_H=95; // super soldier height
-// Tower slot positions relative to base (bx, GY): 3 slots per base
-var TOWER_SLOTS=[{dx:0,dy:-10},{dx:40,dy:-55},{dx:40,dy:-95},{dx:40,dy:-132}]; // slot 0 = base level
-var TOWER_BASE_H=35,TURRET_H=28;
+var BASE_H=120;
+var SUPER_H=60;
+var TOWER_SLOTS=[{dx:0,dy:-8},{dx:30,dy:-40},{dx:30,dy:-68},{dx:30,dy:-96}];
+var TOWER_BASE_H=25,TURRET_H=20;
+// Some sprite sheets face LEFT — need reverse flip for correct direction
+var SPRITE_FACE_LEFT=[[false,false,false],[false,false,true],[false,false,false],[false,false,true],[false,false,true]];
 var spritesReady=false;
 
 // Analyze attack frames at load time: find topmost non-transparent row per frame
 // so we can crop empty space and prevent "shrinking" during combat
 function analyzeAttackFrames(){
+  // Find global content bounds per sprite sheet (union of ALL frames).
+  // Using the SAME crop rect for walk+attack prevents size changes between states.
   var tmpC=document.createElement('canvas');
   var tmpX=tmpC.getContext('2d');
   for(var a=0;a<5;a++){
@@ -145,20 +149,18 @@ function analyzeAttackFrames(){
       var fw=SHEET_FW[a][t];
       var fh=SHEET_H;
       var key='u'+a+t;
-      SP[key+'_atkY']=[];
       tmpC.width=fw;tmpC.height=fh;
-      for(var f=8;f<16;f++){
+      var gTop=fh,gBot=0;
+      for(var f=0;f<16;f++){
         tmpX.clearRect(0,0,fw,fh);
         tmpX.drawImage(sheet,f*fw,0,fw,fh,0,0,fw,fh);
         var data=tmpX.getImageData(0,0,fw,fh).data;
-        var topRow=0;
-        for(var y=0;y<fh;y++){
-          var found=false;
-          for(var x=0;x<fw;x++){if(data[(y*fw+x)*4+3]>20){found=true;break}}
-          if(found){topRow=y;break}
-        }
-        SP[key+'_atkY'].push(topRow);
+        for(var y=0;y<fh;y++){for(var x=0;x<fw;x++){if(data[(y*fw+x)*4+3]>20){if(y<gTop)gTop=y;y=fh;break}}}
+        for(var y=fh-1;y>=0;y--){for(var x=0;x<fw;x++){if(data[(y*fw+x)*4+3]>20){if(y>gBot)gBot=y;y=-1;break}}}
       }
+      // Store global crop: same rect for ALL frames = no size change
+      SP[key+'_cropTop']=gTop>2?gTop:0;
+      SP[key+'_cropBot']=gBot<fh-2?gBot+1:fh;
     }
   }
 }
@@ -242,6 +244,7 @@ function setupCanvas(){
     X.setTransform(dpr*gameScale,0,0,dpr*gameScale,0,0);
     viewScale=cw/sw; // game units per CSS px (for mouse input)
     cW=cw;cH=ch;
+    GY=Math.round(ch*0.82);
     X.imageSmoothingEnabled=false;
   }
   rz();window.addEventListener('resize',rz);
@@ -256,6 +259,9 @@ function updateCamera(dt){
   var scrollSpd=500;
   if(mouseRawX<edgeZone)camTargetX-=scrollSpd*dt*(1-mouseRawX/edgeZone);
   if(mouseRawX>cW-edgeZone)camTargetX+=scrollSpd*dt*(1-(cW-mouseRawX)/edgeZone);
+  // Keyboard scrolling (A/D, arrows)
+  if(scrollKeys.left)camTargetX-=scrollSpd*dt;
+  if(scrollKeys.right)camTargetX+=scrollSpd*dt;
   camTargetX=Math.max(0,Math.min(WORLD_W-cW,camTargetX));
   camX+=(camTargetX-camX)*.1;
 }
@@ -292,9 +298,9 @@ function drawBg(){
 function drawGround(){
   X.fillStyle='#4A7A3D';X.fillRect(0,GY-2,cW,4);
   X.fillStyle='#5A8A4A';X.fillRect(0,GY,cW,3);
-  var g=X.createLinearGradient(0,GY+3,0,H+50);
+  var g=X.createLinearGradient(0,GY+3,0,cH+50);
   g.addColorStop(0,'#8B7555');g.addColorStop(.3,'#7A6548');g.addColorStop(1,'#4A3A28');
-  X.fillStyle=g;X.fillRect(0,GY+3,cW,H-GY+50);
+  X.fillStyle=g;X.fillRect(0,GY+3,cW,cH-GY+50);
 }
 function drawTowerSlot(bx,slot,age,team){
   var dir=team===1?1:-1;
@@ -378,27 +384,26 @@ function drawUnit(u){
   if(!sheet)return;
   var fw=SHEET_FW[u.age][spTier];
   var fh=SHEET_H;
-  var fi,srcY=0,srcH=fh;
-  // Display size — fixed per unit type
+  var fi;
+  // Global content crop — same rect for walk+attack = no size jump
+  var cropKey='u'+u.age+spTier;
+  var cTop=SP[cropKey+'_cropTop']||0;
+  var cBot=SP[cropKey+'_cropBot']||fh;
+  var srcY=cTop,srcH=cBot-cTop;
+  // Display size — fixed per unit type, scaled to content
   var dH=u.tier>=3?SUPER_H:UNIT_H[u.age][spTier];
-  var dW=fw*(dH/fh);
+  var dW=fw*(dH/srcH);
   if(u.st==='attack'){
-    // Attack animation: frames 8-15, synced to attack timer
     fi=8+Math.min(7,Math.floor((u.at/u.atkSpd)*8));
-    // Crop empty top space from attack frames (per-frame analysis data)
-    var atkCrops=SP['u'+u.age+spTier+'_atkY'];
-    if(atkCrops){
-      var topCrop=atkCrops[fi-8];
-      if(topCrop>2){srcY=topCrop;srcH=fh-topCrop}
-    }
   }else{
-    // Walk animation for both walk AND idle — prevents flickering on state change
     fi=Math.floor(u.walkT*8)%N_WALK;
   }
   var srcX=fi*fw;
   var dy=GY-dH;
   X.save();
-  if(u.team===2){
+  var facesLeft=SPRITE_FACE_LEFT[u.age]&&SPRITE_FACE_LEFT[u.age][spTier];
+  var shouldFlip=(u.team===2)!==facesLeft;
+  if(shouldFlip){
     X.translate(sx,0);X.scale(-1,1);
     X.drawImage(sheet,srcX,srcY,fw,srcH,-dW/2,dy,dW,dH);
   }else{
@@ -539,7 +544,7 @@ function updateUnits(dt){
     var friendlies=u.team===1?t1:t2;
     for(var j=0;j<friendlies.length;j++){var f=friendlies[j];if(f===u)continue;
       var dx=u.team===1?(f.x-u.x):(u.x-f.x);
-      if(dx>0&&dx<35){ahead=f;break}}
+      if(dx>0&&dx<65){ahead=f;break}}
     // Base distance
     var baseTgt=u.team===1?E_BASE_X:P_BASE_X;
     var distToBase=Math.abs(u.x-baseTgt);
@@ -556,7 +561,7 @@ function updateUnits(dt){
     }else if(nearEnemy&&nearDist<=u.range){
       newSt='attack';u.at+=dt;
       if(u.at>=u.atkSpd){u.at=0;
-        if(u.isRanged&&nearDist>MELEE_RANGE){proj.push({x:u.x,y:GY-25,vx:(nearEnemy.x>u.x?5:-5),vy:-1.2,dmg:u.dmg,team:u.team,age:u.age});snd('shoot')}
+        if(u.isRanged&&nearDist>MELEE_RANGE){var pvx=Math.max(6,nearDist/20)*(nearEnemy.x>u.x?1:-1);proj.push({x:u.x,y:GY-25,vx:pvx,vy:-1.5,dmg:u.dmg,team:u.team,age:u.age});snd('shoot')}
         else{nearEnemy.hp-=u.dmg;snd('hit');mkP(nearEnemy.x,GY-18,'#e74c3c',4);addDmg(nearEnemy.x,GY-35,u.dmg)}}
     }else if(ahead){
       newSt='idle';
@@ -710,7 +715,14 @@ function cancelMP(){if(ch){ch.unsubscribe();ch=null}rc=null;showScr('scr-main')}
 
 // ===== INPUT =====
 var paused=false;
+document.addEventListener('keyup',function(e){
+  if(e.key==='a'||e.key==='A'||e.key==='ArrowLeft')scrollKeys.left=false;
+  if(e.key==='d'||e.key==='D'||e.key==='ArrowRight')scrollKeys.right=false;
+});
 document.addEventListener('keydown',function(e){
+  // Scroll keys (A/D, arrows)
+  if(e.key==='a'||e.key==='A'||e.key==='ArrowLeft'){scrollKeys.left=true;e.preventDefault()}
+  if(e.key==='d'||e.key==='D'||e.key==='ArrowRight'){scrollKeys.right=true;e.preventDefault()}
   // ESC to pause/unpause
   if(e.key==='Escape'&&mode){
     paused=!paused;
