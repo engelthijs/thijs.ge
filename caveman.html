@@ -133,6 +133,36 @@ var TOWER_SLOTS=[{dx:0,dy:-10},{dx:40,dy:-55},{dx:40,dy:-95},{dx:40,dy:-132}]; /
 var TOWER_BASE_H=35,TURRET_H=28;
 var spritesReady=false;
 
+// Analyze attack frames at load time: find topmost non-transparent row per frame
+// so we can crop empty space and prevent "shrinking" during combat
+function analyzeAttackFrames(){
+  var tmpC=document.createElement('canvas');
+  var tmpX=tmpC.getContext('2d');
+  for(var a=0;a<5;a++){
+    for(var t=0;t<3;t++){
+      var sheet=SP['u'+a+t];
+      if(!sheet)continue;
+      var fw=SHEET_FW[a][t];
+      var fh=SHEET_H;
+      var key='u'+a+t;
+      SP[key+'_atkY']=[];
+      tmpC.width=fw;tmpC.height=fh;
+      for(var f=8;f<16;f++){
+        tmpX.clearRect(0,0,fw,fh);
+        tmpX.drawImage(sheet,f*fw,0,fw,fh,0,0,fw,fh);
+        var data=tmpX.getImageData(0,0,fw,fh).data;
+        var topRow=0;
+        for(var y=0;y<fh;y++){
+          var found=false;
+          for(var x=0;x<fw;x++){if(data[(y*fw+x)*4+3]>20){found=true;break}}
+          if(found){topRow=y;break}
+        }
+        SP[key+'_atkY'].push(topRow);
+      }
+    }
+  }
+}
+
 function loadSprites(cb){
   var total=0,loaded=0,toLoad=[];
   for(var a=0;a<5;a++)for(var t=0;t<3;t++)
@@ -147,8 +177,8 @@ function loadSprites(cb){
   var bar=document.getElementById('lfill');
   toLoad.forEach(function(item){
     var img=new Image();
-    img.onload=function(){SP[item.key]=img;loaded++;bar.style.width=(loaded/total*100)+'%';if(loaded>=total){spritesReady=true;document.getElementById('loadscr').classList.add('done');cb()}};
-    img.onerror=function(){console.warn('Missing:'+item.src);loaded++;bar.style.width=(loaded/total*100)+'%';if(loaded>=total){spritesReady=true;document.getElementById('loadscr').classList.add('done');cb()}};
+    img.onload=function(){SP[item.key]=img;loaded++;bar.style.width=(loaded/total*100)+'%';if(loaded>=total){spritesReady=true;analyzeAttackFrames();document.getElementById('loadscr').classList.add('done');cb()}};
+    img.onerror=function(){console.warn('Missing:'+item.src);loaded++;bar.style.width=(loaded/total*100)+'%';if(loaded>=total){spritesReady=true;analyzeAttackFrames();document.getElementById('loadscr').classList.add('done');cb()}};
     img.src=item.src;
   });
 }
@@ -246,17 +276,16 @@ function drawBg(){
     var px=c[0]-cx+(ct*20+c[0])%(cW+300)-150;
     X.beginPath();X.arc(px,c[1],c[2]*.32,0,Math.PI*2);X.arc(px+c[2]*.28,c[1]-c[2]*.08,c[2]*.24,0,Math.PI*2);X.arc(px+c[2]*.52,c[1]+c[2]*.02,c[2]*.2,0,Math.PI*2);X.fill();
   });
-  // Terrain background image (scrolls with world)
+  // Terrain background image (single stretch across world — no tiling seams)
   var bgI=SP['bg'];
   if(bgI){
-    var bgH=bgI.height*(W/bgI.width);
-    // Tile the background across world width
-    var tilesNeeded=Math.ceil(WORLD_W/W)+1;
-    for(var i=0;i<tilesNeeded;i++){
-      var bx=wx(i*W);
-      if(bx>cW+W||bx<-W)continue;
-      X.drawImage(bgI,bx,GY-bgH+15,W,bgH);
-    }
+    var bgW=WORLD_W+100;
+    var bgFullH=bgW/(bgI.width/bgI.height);
+    var terrainH=380;
+    var srcFrac=terrainH/bgFullH;
+    var srcTop=Math.floor(bgI.height*(1-srcFrac));
+    var srcH2=bgI.height-srcTop;
+    X.drawImage(bgI,0,srcTop,bgI.width,srcH2,wx(-50),GY-terrainH+15,bgW,terrainH);
   }
 }
 function drawGround(){
@@ -348,36 +377,33 @@ function drawUnit(u){
   if(!sheet)return;
   var fw=SHEET_FW[u.age][spTier];
   var fh=SHEET_H;
-  // ALWAYS use walk frames (0-7) — attack sprites have inconsistent sizes
-  // that cause visual shrinking. Walk frames are consistent across all units.
-  var fi;
-  if(u.st==='idle'){
-    fi=0; // standing still
+  var fi,srcY=0,srcH=fh;
+  // Display size — fixed per unit type
+  var dH=u.tier>=3?SUPER_H:UNIT_H[u.age][spTier];
+  var dW=fw*(dH/fh);
+  if(u.st==='attack'){
+    // Attack animation: frames 8-15, synced to attack timer
+    fi=8+Math.min(7,Math.floor((u.at/u.atkSpd)*8));
+    // Crop empty top space from attack frames (per-frame analysis data)
+    var atkCrops=SP['u'+u.age+spTier+'_atkY'];
+    if(atkCrops){
+      var topCrop=atkCrops[fi-8];
+      if(topCrop>2){srcY=topCrop;srcH=fh-topCrop}
+    }
   }else{
-    // Walk cycle for both walk and attack states
+    // Walk animation for both walk AND idle — prevents flickering on state change
     fi=Math.floor(u.walkT*8)%N_WALK;
   }
-  var srcX=fi*fw,srcY=0;
-  // Display size — fixed per unit type, never changes
-  var dH=u.tier>=3?SUPER_H:UNIT_H[u.age][spTier];
-  var scale=dH/fh;
-  var dW=fw*scale;
+  var srcX=fi*fw;
   var dy=GY-dH;
   X.save();
   if(u.team===2){
     X.translate(sx,0);X.scale(-1,1);
-    X.drawImage(sheet,srcX,srcY,fw,fh,-dW/2,dy,dW,dH);
+    X.drawImage(sheet,srcX,srcY,fw,srcH,-dW/2,dy,dW,dH);
   }else{
-    X.drawImage(sheet,srcX,srcY,fw,fh,sx-dW/2,dy,dW,dH);
+    X.drawImage(sheet,srcX,srcY,fw,srcH,sx-dW/2,dy,dW,dH);
   }
   X.restore();
-  // Attack flash effect — visual indicator of combat
-  if(u.st==='attack'&&u.at<0.12){
-    X.globalAlpha=0.25*(1-u.at/0.12);
-    X.fillStyle='#FFF';
-    X.fillRect(sx-dW/2,dy,dW,dH);
-    X.globalAlpha=1;
-  }
   // HP bar
   if(u.hp<u.mhp){
     var bw=Math.max(24,dW*.45),by=dy-7;
@@ -439,7 +465,7 @@ function drawHUD(){
       bx2+=btnW+gap;
     }
     btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'Turrets \u25B6',cost:pSlots+'/4 slots',key:'T',canAfford:true,id:20,highlight:true});bx2+=btnW+gap;
-    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:SPECIALS[pAge][0],cost:specActive?'Active':'Ready!',key:'Q',canAfford:!specActive,id:11});bx2+=btnW+gap;
+    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:SPECIALS[pAge][0],cost:specActive?'Active':specCD>0?Math.ceil(specCD)+'s':'Ready!',key:'Q',canAfford:!specActive&&specCD<=0,id:11});bx2+=btnW+gap;
     if(pAge<4){btns.push({x:bx2,y:barY+6,w:btnW+10,h:btnH,label:'EVOLVE',cost:EVO_COST[pAge]+' XP',key:'E',canAfford:xp>=EVO_COST[pAge],id:12,glow:xp>=EVO_COST[pAge]})}
   }else{
     // TURRET MODE: [Type1][Type2][Type3] [+Slot] [Sell] [<<Back]
@@ -534,7 +560,7 @@ function updateUnits(dt){
       if(u.team===2&&u.x<P_BASE_X)u.x=P_BASE_X;
     }
     // Always advance walk animation (used for rendering in all states)
-    u.walkT=(u.walkT||0)+dt*(newSt==='walk'?5:1.5); // slower during attack/idle
+    u.walkT=(u.walkT||0)+dt*(newSt==='walk'?2:0.8);
     // Reset attack timer when entering attack from non-attack state
     if(newSt!=='attack'&&u.st==='attack')u.at=0;
     u.st=newSt;
@@ -545,7 +571,7 @@ function updateUnits(dt){
     else if(us[i].team===1){if(mode==='sp'){eGold+=rwd;eXP+=rwd*2}xp+=Math.floor(rwd/2)}
     us.splice(i,1)}}
 }
-function updateProj(dt){for(var i=proj.length-1;i>=0;i--){var p=proj[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.12;var hit=false;for(var j=0;j<us.length;j++){var u=us[j];if(u.team===p.team||u.hp<=0)continue;if(Math.abs(u.x-p.x)<18&&p.y>GY-55){u.hp-=p.dmg;snd('hit');mkP(p.x,p.y,'#e74c3c',3);addDmg(u.x,GY-35,p.dmg);hit=true;break}}if(hit||p.y>GY||p.x<0||p.x>WORLD_W)proj.splice(i,1)}}
+function updateProj(dt){for(var i=proj.length-1;i>=0;i--){var p=proj[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.12;var hit=false;for(var j=0;j<us.length;j++){var u=us[j];if(u.team===p.team||u.hp<=0)continue;if(Math.abs(u.x-p.x)<18&&p.y>GY-55){if(p.dmg>0){u.hp-=p.dmg;snd('hit');addDmg(u.x,GY-35,p.dmg)}mkP(p.x,p.y,p.dmg>0?'#e74c3c':'#FFA500',3);hit=true;break}}if(hit||p.y>GY||p.x<0||p.x>WORLD_W)proj.splice(i,1)}}
 function updateTurrets(dt){
   [pTur,eTur].forEach(function(tarr,ti){
     var team=ti===0?1:2;
@@ -556,7 +582,14 @@ function updateTurrets(dt){
       if(tr.at>=td[2]){
         var near=null,nd=1e9;
         for(var j=0;j<us.length;j++){var u=us[j];if(u.team===team)continue;var d=Math.abs(u.x-tbx);if(d<td[1]&&d<nd){nd=d;near=u}}
-        if(near){tr.at=0;near.hp-=td[0];mkP(near.x,GY-18,'#FFA500',3);addDmg(near.x,GY-35,td[0])}
+        if(near){tr.at=0;near.hp-=td[0];addDmg(near.x,GY-35,td[0]);
+          // Visual: projectile from turret to target
+          var dir2=team===1?1:-1;
+          var sl=TOWER_SLOTS[tr.slot]||TOWER_SLOTS[0];
+          var tSx=tbx+sl.dx*dir2;var tSy=GY+sl.dy-TOWER_BASE_H-5;
+          mkP(tSx,tSy,'#FFA500',3);
+          var n=8;var pdx=near.x-tSx;var pdy=(GY-18)-tSy;var gAcc=0.12*n*(n-1)/2;
+          proj.push({x:tSx,y:tSy,vx:pdx/n,vy:(pdy-gAcc)/n,dmg:0,team:team,age:tr.age||0})}
       }
     });
   });
@@ -565,6 +598,9 @@ function updateTurrets(dt){
 // ===== AI =====
 function updateAI(dt){if(mode!=='sp')return;
   aiAgeT+=dt;aiPhaseT+=dt;aiT+=dt;
+  // AI passive gold income (scales with age and difficulty)
+  var aiIncome=[10,30,100,400,1500][eAge];
+  eGold+=dt*aiIncome*DIFF_MULT[diff];
   var spawnInterval;
   if(aiPhase===0)spawnInterval=3+Math.random()*5;
   else if(aiPhase===1)spawnInterval=2+Math.random()*4;
@@ -573,18 +609,18 @@ function updateAI(dt){if(mode!=='sp')return;
     if(aiPhase===0)tier=0;
     else if(aiPhase===1)tier=Math.random()<.5?0:1;
     else tier=Math.random()<.25?0:Math.random()<.5?1:2;
-    // AI spawns for FREE (faithful to original — no gold economy)
-    spawnUnit(tier,2)}
+    // AI must pay gold to spawn (like player)
+    var aiUD=AGE_UNITS[eAge];if(tier<aiUD.length){var aiCost=aiUD[tier][5];if(eGold>=aiCost){eGold-=aiCost;spawnUnit(tier,2)}}}
   if(aiPhase<2&&aiPhaseT>=60){aiPhase++;aiPhaseT=0}
   if(eAge<4){var ageTime=AI_AGE_TIME[eAge];if(aiAgeT>=ageTime){var oldHP=BASE_HP[eAge];eAge++;p2MaxHP=BASE_HP[eAge];p2HP+=BASE_HP[eAge]-oldHP;aiPhase=0;aiPhaseT=0;aiAgeT=0}}
-  // AI turret management (timer-based like original, not gold-based)
+  // AI turret management (gold-based)
   aiTurT=(aiTurT||0)+dt;
-  if(aiTurT>15&&eSlots<4){eSlots++;aiTurT=0}
-  if(aiTurT>8&&eTur.length<eSlots){eTur.push({slot:eTur.length,type:0,age:eAge,at:0});aiTurT=0}
+  if(aiTurT>15&&eSlots<4){var slCost=eSlots>0?SLOT_COST[eSlots-1]:0;if(eGold>=slCost){eGold-=slCost;eSlots++;aiTurT=0}}
+  if(aiTurT>8&&eTur.length<eSlots){var tCost=TURRET_DATA[eAge][0][3];if(eGold>=tCost){eGold-=tCost;eTur.push({slot:eTur.length,type:0,age:eAge,at:0});aiTurT=0}}
 }
 
 // ===== SPECIAL ABILITIES =====
-function useSpecial(){if(specActive)return;snd('special');var sp=SPECIALS[pAge];
+function useSpecial(){if(specActive||specCD>0)return;specCD=SPEC_CD;snd('special');var sp=SPECIALS[pAge];
   if(sp[1]==='rain'){for(var i=0;i<sp[2];i++){specProj.push({x:P_SPAWN_X+100+Math.random()*(WORLD_W-400),y:-50-Math.random()*200,vy:3.5+Math.random()*2.5,vx:(Math.random()-.5)*1.2,dmg:sp[3],life:5,c:pAge===0?'#888':'#8B6530',sz:pAge===0?5:4,team:1})}}
   else if(sp[1]==='heal'){specActive={type:'heal',dur:5,t:0,rate:sp[3]}}
   else if(sp[1]==='bomb'){specActive={type:'bomb',t:0,interval:.4,count:sp[2],spawned:0,planeX:camX-60}}
@@ -592,7 +628,6 @@ function useSpecial(){if(specActive)return;snd('special');var sp=SPECIALS[pAge];
 function updateSpecials(dt){
   for(var i=specProj.length-1;i>=0;i--){var s=specProj[i];if(s.delay&&s.delay>0){s.delay-=dt;continue}s.y+=s.vy;s.x+=s.vx||0;s.life-=dt;if(s.y>=GY){
     for(var j=0;j<us.length;j++){if(us[j].team!==s.team&&Math.abs(us[j].x-s.x)<30){us[j].hp-=s.dmg;addDmg(us[j].x,GY-35,s.dmg)}}
-    if(Math.abs(E_BASE_X-s.x)<50){p2HP-=Math.floor(s.dmg/3);mkP(E_BASE_X,GY-25,'#FF4500',4)}
     mkP(s.x,GY-5,'#FF4500',6);specProj.splice(i,1)}else if(s.life<=0){specProj.splice(i,1)}}
   if(specActive&&specActive.type==='heal'){specActive.t+=dt;for(var i=0;i<us.length;i++){if(us[i].team===1){us[i].hp=Math.min(us[i].mhp+50,us[i].hp+specActive.rate*dt)}}if(specActive.t>=specActive.dur)specActive=null}
   if(specActive&&specActive.type==='bomb'){specActive.t+=dt;specActive.planeX+=180*dt;if(specActive.planeX>P_SPAWN_X+200&&specActive.t>=specActive.interval*specActive.spawned&&specActive.spawned<specActive.count){specActive.spawned++;specProj.push({x:specActive.planeX,y:250,vy:4.5,vx:0,dmg:500,life:4,c:'#4A4A4A',sz:6,team:1})}if(specActive.planeX>WORLD_W+100)specActive=null;
@@ -620,9 +655,9 @@ function bcastSync(dt){if(!ch||mode!=='host')return;syncT+=dt;if(syncT>=.1){sync
 // ===== FLOW =====
 function beginGame(){initAudio();startMusic();document.getElementById('menu').classList.add('hidden');document.getElementById('xb').classList.add('on');document.getElementById('go').classList.remove('on');
   gold=START_GOLD;xp=0;pAge=0;eAge=0;p1HP=BASE_HP[0];p1MaxHP=BASE_HP[0];p2HP=BASE_HP[0];p2MaxHP=BASE_HP[0];
-  eGold=100;eXP=0;us=[];proj=[];parts=[];dmgNums=[];specProj=[];pTur=[];eTur=[];trainQ=[];trainT=0;
+  eGold=START_GOLD;eXP=0;us=[];proj=[];parts=[];dmgNums=[];specProj=[];pTur=[];eTur=[];trainQ=[];trainT=0;
   pSlots=1;eSlots=1;uiMode='units'; // both start with 1 free turret slot
-  aiT=0;aiPhase=0;aiPhaseT=0;aiAgeT=0;syncT=0;aiTurT=0;specActive=null;tick=0;
+  aiT=0;aiPhase=0;aiPhaseT=0;aiAgeT=0;syncT=0;aiTurT=0;specActive=null;specCD=0;tick=0;
   camX=0;camTargetX=0;
   run=true;lt=performance.now();if(af)cancelAnimationFrame(af);loop()}
 function loop(){if(!run)return;af=requestAnimationFrame(loop);
@@ -636,7 +671,7 @@ function loop(){if(!run)return;af=requestAnimationFrame(loop);
     X.textAlign='left';return;
   }
   var now=performance.now(),dt=Math.min((now-lt)/1e3,.05);lt=now;tick++;
-  // specCD removed — no cooldown in original game
+  if(specCD>0)specCD-=dt;
   updateCamera(dt);
   if(mode!=='guest'){updateTraining(dt);updateUnits(dt);updateProj(dt);updateTurrets(dt);updateAI(dt);bcastSync(dt);if(p2HP<=0){p2HP=0;showGO('p1');return}if(p1HP<=0){p1HP=0;showGO('p2');return}}
   updateSpecials(dt);updateParts();updateDmg();
