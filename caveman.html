@@ -101,7 +101,7 @@ var TURRET_DATA=[
  [[60,600,0.3,7500],[120,600,1.2,9000],[80,600,0.3,14000]],   // Military: MG Turret, Rocket, Double Turret
  [[100,700,0.8,24000],[50,700,0.2,40000],[50,700,0.6,100000]] // Future: Titanium, Laser, Ion Cannon
 ];
-var SLOT_COST=[200,600,1500]; // cost for tower slot 1, 2, 3
+var SLOT_COST=[1000,3000,7500]; // cost for tower slots 2, 3, 4 (slot 1 is free)
 var TURRET_NAMES=[
  ['Rock Sling','Egg Auto','Catapult'],['Catapult','Fire Cat.','Oil Pot'],
  ['Sm. Cannon','Lg. Cannon','Explosive'],['MG Turret','Rocket','Dbl. Turret'],
@@ -129,7 +129,7 @@ var UNIT_H=[
 var BASE_H=170; // base display height
 var SUPER_H=95; // super soldier height
 // Tower slot positions relative to base (bx, GY): 3 slots per base
-var TOWER_SLOTS=[{dx:40,dy:-55},{dx:40,dy:-95},{dx:40,dy:-132}];
+var TOWER_SLOTS=[{dx:0,dy:-10},{dx:40,dy:-55},{dx:40,dy:-95},{dx:40,dy:-132}]; // slot 0 = base level
 var TOWER_BASE_H=35,TURRET_H=28;
 var spritesReady=false;
 
@@ -163,7 +163,7 @@ var pTur=[],eTur=[]; // turrets: {slot,type,age,at}
 var pSlots=0,eSlots=0; // number of tower slots owned (0-3)
 var uiMode='units'; // 'units' or 'turrets'
 var trainQ=[],trainT=0;
-var aiT=0,aiPhase=0,aiPhaseT=0,aiAgeT=0,syncT=0;
+var aiT=0,aiPhase=0,aiPhaseT=0,aiAgeT=0,syncT=0,aiTurT=0;
 var specCD=0,specActive=null;
 var hoverBtn=-1;
 var bgMusic=null,ac=null;
@@ -322,7 +322,7 @@ function drawBase(bx,team){
     X.strokeStyle='rgba(255,255,0,.2)';X.lineWidth=1;X.setLineDash([3,3]);X.strokeRect(slotX-14,slotY-TOWER_BASE_H-TURRET_H+2,28,TURRET_H+2);X.setLineDash([]);
   }
   // Unowned slots (faint outline)
-  for(var i=numSlots;i<3;i++){
+  for(var i=numSlots;i<4;i++){
     var dir=team===1?1:-1;
     var slotX=screenBx+TOWER_SLOTS[i].dx*dir;
     var slotY=GY+TOWER_SLOTS[i].dy;
@@ -348,19 +348,17 @@ function drawUnit(u){
   if(!sheet)return;
   var fw=SHEET_FW[u.age][spTier];
   var fh=SHEET_H;
-  // Animation frame - use time-based animation to prevent flickering
-  var animSpd=6; // slower = smoother animation
+  // ALWAYS use walk frames (0-7) — attack sprites have inconsistent sizes
+  // that cause visual shrinking. Walk frames are consistent across all units.
   var fi;
-  if(u.st==='attack'){
-    fi=N_WALK+((u.fr/animSpd|0)%N_ATK);
+  if(u.st==='idle'){
+    fi=0; // standing still
   }else{
-    // walk and idle both use walk frames
-    fi=(u.fr/animSpd|0)%N_WALK;
-    if(u.st==='idle')fi=(u.fr/(animSpd*2)|0)%N_WALK; // idle = slow walk anim
+    // Walk cycle for both walk and attack states
+    fi=Math.floor(u.walkT*8)%N_WALK;
   }
   var srcX=fi*fw,srcY=0;
-  // Display size - use walk-frame proportions for CONSISTENT size
-  // Use reference width from first walk frame to prevent size changes
+  // Display size — fixed per unit type, never changes
   var dH=u.tier>=3?SUPER_H:UNIT_H[u.age][spTier];
   var scale=dH/fh;
   var dW=fw*scale;
@@ -373,6 +371,13 @@ function drawUnit(u){
     X.drawImage(sheet,srcX,srcY,fw,fh,sx-dW/2,dy,dW,dH);
   }
   X.restore();
+  // Attack flash effect — visual indicator of combat
+  if(u.st==='attack'&&u.at<0.12){
+    X.globalAlpha=0.25*(1-u.at/0.12);
+    X.fillStyle='#FFF';
+    X.fillRect(sx-dW/2,dy,dW,dH);
+    X.globalAlpha=1;
+  }
   // HP bar
   if(u.hp<u.mhp){
     var bw=Math.max(24,dW*.45),by=dy-7;
@@ -433,8 +438,8 @@ function drawHUD(){
       btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:units[i][0],cost:units[i][5]+'g',key:''+(i+1),canAfford:gold>=units[i][5]&&trainQ.length<MAX_QUEUE,id:i});
       bx2+=btnW+gap;
     }
-    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'Turrets \u25B6',cost:pSlots+'/3 slots',key:'T',canAfford:true,id:20,highlight:true});bx2+=btnW+gap;
-    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:SPECIALS[pAge][0],cost:specCD>0?Math.ceil(specCD)+'s':'Ready!',key:'Q',canAfford:specCD<=0,id:11});bx2+=btnW+gap;
+    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'Turrets \u25B6',cost:pSlots+'/4 slots',key:'T',canAfford:true,id:20,highlight:true});bx2+=btnW+gap;
+    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:SPECIALS[pAge][0],cost:specActive?'Active':'Ready!',key:'Q',canAfford:!specActive,id:11});bx2+=btnW+gap;
     if(pAge<4){btns.push({x:bx2,y:barY+6,w:btnW+10,h:btnH,label:'EVOLVE',cost:EVO_COST[pAge]+' XP',key:'E',canAfford:xp>=EVO_COST[pAge],id:12,glow:xp>=EVO_COST[pAge]})}
   }else{
     // TURRET MODE: [Type1][Type2][Type3] [+Slot] [Sell] [<<Back]
@@ -447,8 +452,8 @@ function drawHUD(){
       btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:tn[i],cost:td[i][3]+'g',key:''+(i+1),canAfford:canPlace,id:30+i,sub:td[i][0]+'dmg'});
       bx2+=btnW+gap;
     }
-    var slotCanAfford=pSlots<3&&gold>=SLOT_COST[pSlots];
-    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'+ Slot',cost:pSlots<3?SLOT_COST[pSlots]+'g':'MAX',key:'S',canAfford:slotCanAfford,id:33});bx2+=btnW+gap;
+    var slotCanAfford=pSlots<4&&gold>=SLOT_COST[pSlots-1];
+    btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'+ Slot',cost:pSlots<4?SLOT_COST[pSlots-1]+'g':'MAX',key:'S',canAfford:slotCanAfford,id:33});bx2+=btnW+gap;
     btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'Sell',cost:pTur.length>0?'+'+Math.floor(TURRET_DATA[pTur[pTur.length-1].age][pTur[pTur.length-1].type][3]/2)+'g':'--',key:'X',canAfford:pTur.length>0,id:34});bx2+=btnW+gap;
     btns.push({x:bx2,y:barY+6,w:btnW,h:btnH,label:'\u25C0 Back',cost:'',key:'T',canAfford:true,id:35,highlight:true});
   }
@@ -473,19 +478,15 @@ function drawHUD(){
     X.fillText('['+b.key+']',b.x+b.w/2,b.y+(b.sub?47:43));
   });
   X.textAlign='left';window._btns=btns;
-  // Special cooldown overlay
-  if(specCD>0){
+  // Special active overlay
+  if(specActive){
     var sb=btns.find(function(b){return b.id===11});
-    if(sb){
-      var cdPct=specCD/SPEC_CD;
-      X.fillStyle='rgba(0,0,0,.5)';
-      X.fillRect(sb.x+1,sb.y+1,sb.w-2,(sb.h-2)*cdPct);
-    }
+    if(sb){X.fillStyle='rgba(255,180,0,.15)';X.beginPath();X.roundRect(sb.x,sb.y,sb.w,sb.h,6);X.fill()}
   }
 }
 
 // ===== GAME LOGIC =====
-function spawnUnit(tier,team){var age=team===1?pAge:eAge;var ud=AGE_UNITS[age];if(tier>=ud.length)return;var u=ud[tier];var mult=team===2?DIFF_MULT[diff]:1;us.push({age:age,tier:tier,team:team,x:team===1?P_SPAWN_X:E_SPAWN_X,hp:Math.floor(u[1]*mult),mhp:Math.floor(u[1]*mult),dmg:u[2],range:u[3],atkSpd:u[4],cost:u[5],reward:u[6],isRanged:u[8],at:0,st:'walk',fr:Math.random()*100|0,name:u[0]})}
+function spawnUnit(tier,team){var age=team===1?pAge:eAge;var ud=AGE_UNITS[age];if(tier>=ud.length)return;var u=ud[tier];var mult=team===2?DIFF_MULT[diff]:1;us.push({age:age,tier:tier,team:team,x:team===1?P_SPAWN_X:E_SPAWN_X,hp:Math.floor(u[1]*mult),mhp:Math.floor(u[1]*mult),dmg:u[2],range:u[3],atkSpd:u[4],cost:u[5],reward:u[6],isRanged:u[8],at:0,st:'walk',walkT:Math.random()*8,name:u[0]})}
 function queueUnit(tier){var ud=AGE_UNITS[pAge];if(tier>=ud.length)return;var u=ud[tier];if(gold<u[5]||trainQ.length>=MAX_QUEUE)return;gold-=u[5];trainQ.push({tier:tier,tt:u[7],name:u[0]});if(trainQ.length===1)trainT=trainQ[0].tt;snd('spawn')}
 function updateTraining(dt){if(trainQ.length===0)return;trainT-=dt;if(trainT<=0){spawnUnit(trainQ[0].tier,1);trainQ.shift();if(trainQ.length>0)trainT=trainQ[0].tt;else trainT=0}}
 function updateUnits(dt){
@@ -493,11 +494,11 @@ function updateUnits(dt){
   for(var i=0;i<us.length;i++){if(us[i].team===1)t1.push(us[i]);else t2.push(us[i])}
   t1.sort(function(a,b){return b.x-a.x});
   t2.sort(function(a,b){return a.x-b.x});
-  for(var i=0;i<us.length;i++){var u=us[i];u.fr++;var dir=u.team===1?1:-1;
+  for(var i=0;i<us.length;i++){var u=us[i];var dir=u.team===1?1:-1;
     // Clamp position: units cannot walk past enemy base
     if(u.team===1&&u.x>E_BASE_X)u.x=E_BASE_X;
     if(u.team===2&&u.x<P_BASE_X)u.x=P_BASE_X;
-    // Find nearest enemy (not just frontmost)
+    // Find nearest enemy
     var nearEnemy=null,nearDist=1e9;
     var enemies=u.team===1?t2:t1;
     for(var j=0;j<enemies.length;j++){var d=Math.abs(u.x-enemies[j].x);if(d<nearDist){nearDist=d;nearEnemy=enemies[j]}}
@@ -510,29 +511,34 @@ function updateUnits(dt){
     // Base distance
     var baseTgt=u.team===1?E_BASE_X:P_BASE_X;
     var distToBase=Math.abs(u.x-baseTgt);
-    // Priority: 1) attack base if close, 2) attack enemy in range, 3) walk
+    // Determine new state
+    var newSt;
     if(distToBase<55){
-      u.st='attack';u.at+=dt;
+      newSt='attack';u.at+=dt;
       if(u.at>=u.atkSpd){u.at=0;
-        // Also damage nearby enemy if melee
         if(nearEnemy&&nearDist<=u.range){
           nearEnemy.hp-=u.dmg;snd('hit');mkP(nearEnemy.x,GY-18,'#e74c3c',4);addDmg(nearEnemy.x,GY-35,u.dmg);
         }else{
           if(u.team===1){p2HP-=u.dmg}else{p1HP-=u.dmg}
           snd('basehit');mkP(baseTgt,GY-30,'#f39c12',5);addDmg(baseTgt,GY-45,u.dmg)}}
     }else if(nearEnemy&&nearDist<=u.range){
-      u.st='attack';u.at+=dt;
+      newSt='attack';u.at+=dt;
       if(u.at>=u.atkSpd){u.at=0;
         if(u.isRanged&&nearDist>MELEE_RANGE){proj.push({x:u.x,y:GY-25,vx:(nearEnemy.x>u.x?5:-5),vy:-1.2,dmg:u.dmg,team:u.team,age:u.age});snd('shoot')}
         else{nearEnemy.hp-=u.dmg;snd('hit');mkP(nearEnemy.x,GY-18,'#e74c3c',4);addDmg(nearEnemy.x,GY-35,u.dmg)}}
     }else if(ahead){
-      u.st='idle'; // blocked: don't change animation, just wait
+      newSt='idle';
     }else{
-      u.st='walk';u.x+=MOVE_SPD*dir*dt;
-      // Re-clamp after movement
+      newSt='walk';u.x+=MOVE_SPD*dir*dt;
       if(u.team===1&&u.x>E_BASE_X)u.x=E_BASE_X;
       if(u.team===2&&u.x<P_BASE_X)u.x=P_BASE_X;
-    }}
+    }
+    // Always advance walk animation (used for rendering in all states)
+    u.walkT=(u.walkT||0)+dt*(newSt==='walk'?5:1.5); // slower during attack/idle
+    // Reset attack timer when entering attack from non-attack state
+    if(newSt!=='attack'&&u.st==='attack')u.at=0;
+    u.st=newSt;
+  }
   for(var i=us.length-1;i>=0;i--){if(us[i].hp<=0){snd('die');mkP(us[i].x,GY-15,'#8B4513',8);
     var rwd=us[i].reward;
     if(us[i].team===2){gold+=rwd;xp+=rwd*2}
@@ -567,18 +573,18 @@ function updateAI(dt){if(mode!=='sp')return;
     if(aiPhase===0)tier=0;
     else if(aiPhase===1)tier=Math.random()<.5?0:1;
     else tier=Math.random()<.25?0:Math.random()<.5?1:2;
-    var cost=AGE_UNITS[eAge][tier][5];
-    if(eGold>=cost){eGold-=cost;spawnUnit(tier,2)}}
+    // AI spawns for FREE (faithful to original — no gold economy)
+    spawnUnit(tier,2)}
   if(aiPhase<2&&aiPhaseT>=60){aiPhase++;aiPhaseT=0}
-  if(eAge<4){var ageTime=AI_AGE_TIME[eAge];if(aiAgeT>=ageTime){var oldHP=BASE_HP[eAge];eAge++;p2MaxHP=BASE_HP[eAge];p2HP+=BASE_HP[eAge]-oldHP;eGold+=200;aiPhase=0;aiPhaseT=0;aiAgeT=0}}
-  // AI buys tower slots and turrets
-  if(Math.random()<.002&&eSlots<3){var sc=SLOT_COST[eSlots];if(eGold>=sc){eGold-=sc;eSlots++}}
-  if(Math.random()<.003&&eTur.length<eSlots){var tt=Math.floor(Math.random()*3);var tc=TURRET_DATA[eAge][tt][3];if(eGold>=tc){eGold-=tc;eTur.push({slot:eTur.length,type:tt,age:eAge,at:0})}}
-  eGold+=.5*dt;
+  if(eAge<4){var ageTime=AI_AGE_TIME[eAge];if(aiAgeT>=ageTime){var oldHP=BASE_HP[eAge];eAge++;p2MaxHP=BASE_HP[eAge];p2HP+=BASE_HP[eAge]-oldHP;aiPhase=0;aiPhaseT=0;aiAgeT=0}}
+  // AI turret management (timer-based like original, not gold-based)
+  aiTurT=(aiTurT||0)+dt;
+  if(aiTurT>15&&eSlots<4){eSlots++;aiTurT=0}
+  if(aiTurT>8&&eTur.length<eSlots){eTur.push({slot:eTur.length,type:0,age:eAge,at:0});aiTurT=0}
 }
 
 // ===== SPECIAL ABILITIES =====
-function useSpecial(){if(specCD>0)return;specCD=SPEC_CD;snd('special');var sp=SPECIALS[pAge];
+function useSpecial(){if(specActive)return;snd('special');var sp=SPECIALS[pAge];
   if(sp[1]==='rain'){for(var i=0;i<sp[2];i++){specProj.push({x:P_SPAWN_X+100+Math.random()*(WORLD_W-400),y:-50-Math.random()*200,vy:3.5+Math.random()*2.5,vx:(Math.random()-.5)*1.2,dmg:sp[3],life:5,c:pAge===0?'#888':'#8B6530',sz:pAge===0?5:4,team:1})}}
   else if(sp[1]==='heal'){specActive={type:'heal',dur:5,t:0,rate:sp[3]}}
   else if(sp[1]==='bomb'){specActive={type:'bomb',t:0,interval:.4,count:sp[2],spawned:0,planeX:camX-60}}
@@ -599,10 +605,12 @@ function updateDmg(){for(var i=dmgNums.length-1;i>=0;i--){var d=dmgNums[i];d.y+=
 
 // ===== ACTIONS =====
 function spawn(tier){queueUnit(tier)}
-function buySlot(){if(pSlots>=3)return;var cost=SLOT_COST[pSlots];if(gold<cost)return;gold-=cost;pSlots++;snd('spawn')}
+function buySlot(){if(pSlots>=4)return;var cost=SLOT_COST[pSlots-1];if(gold<cost)return;gold-=cost;pSlots++;snd('spawn')}
 function buyTurret(type){if(typeof type==='undefined')type=0;if(pTur.length>=pSlots)return;var td=TURRET_DATA[pAge][type];if(!td||gold<td[3])return;gold-=td[3];pTur.push({slot:pTur.length,type:type,age:pAge,at:0});snd('spawn')}
 function sellTurret(){if(pTur.length===0)return;var t=pTur.pop();var td=TURRET_DATA[t.age][t.type];gold+=Math.floor(td[3]/2);snd('die')}
-function evolve(){if(pAge>=4)return;var cost=EVO_COST[pAge];if(xp<cost)return;xp-=cost;var oldHP=BASE_HP[pAge];pAge++;p1MaxHP=BASE_HP[pAge];p1HP+=BASE_HP[pAge]-oldHP;gold+=100;snd('evolve')}
+function evolve(){if(pAge>=4)return;var cost=EVO_COST[pAge];if(xp<cost)return;
+  // XP is a threshold, NOT consumed (faithful to original)
+  var oldHP=BASE_HP[pAge];pAge++;p1MaxHP=BASE_HP[pAge];p1HP+=BASE_HP[pAge]-oldHP;snd('evolve')}
 
 // ===== MULTIPLAYER =====
 async function createRoom(){var ch2='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';rc='';for(var i=0;i<4;i++)rc+=ch2[Math.floor(Math.random()*ch2.length)];document.getElementById('rcd').textContent=rc;document.getElementById('crs').textContent='Waiting...';document.getElementById('crs').className='st';ch=sb.channel('cw-'+rc,{config:{broadcast:{self:false}}});ch.on('broadcast',{event:'join'},function(){document.getElementById('crs').textContent='Connected!';document.getElementById('crs').className='st ok';setTimeout(function(){mode='host';beginGame()},500)});ch.on('broadcast',{event:'spawn'},function(p){spawnUnit(p.payload.tier,2)});ch.on('broadcast',{event:'rematch'},function(){rematch()});await ch.subscribe()}
@@ -613,8 +621,8 @@ function bcastSync(dt){if(!ch||mode!=='host')return;syncT+=dt;if(syncT>=.1){sync
 function beginGame(){initAudio();startMusic();document.getElementById('menu').classList.add('hidden');document.getElementById('xb').classList.add('on');document.getElementById('go').classList.remove('on');
   gold=START_GOLD;xp=0;pAge=0;eAge=0;p1HP=BASE_HP[0];p1MaxHP=BASE_HP[0];p2HP=BASE_HP[0];p2MaxHP=BASE_HP[0];
   eGold=100;eXP=0;us=[];proj=[];parts=[];dmgNums=[];specProj=[];pTur=[];eTur=[];trainQ=[];trainT=0;
-  pSlots=0;eSlots=0;uiMode='units';
-  aiT=0;aiPhase=0;aiPhaseT=0;aiAgeT=0;syncT=0;specCD=0;specActive=null;tick=0;
+  pSlots=1;eSlots=1;uiMode='units'; // both start with 1 free turret slot
+  aiT=0;aiPhase=0;aiPhaseT=0;aiAgeT=0;syncT=0;aiTurT=0;specActive=null;tick=0;
   camX=0;camTargetX=0;
   run=true;lt=performance.now();if(af)cancelAnimationFrame(af);loop()}
 function loop(){if(!run)return;af=requestAnimationFrame(loop);
@@ -628,7 +636,7 @@ function loop(){if(!run)return;af=requestAnimationFrame(loop);
     X.textAlign='left';return;
   }
   var now=performance.now(),dt=Math.min((now-lt)/1e3,.05);lt=now;tick++;
-  if(specCD>0)specCD=Math.max(0,specCD-dt);
+  // specCD removed — no cooldown in original game
   updateCamera(dt);
   if(mode!=='guest'){updateTraining(dt);updateUnits(dt);updateProj(dt);updateTurrets(dt);updateAI(dt);bcastSync(dt);if(p2HP<=0){p2HP=0;showGO('p1');return}if(p1HP<=0){p1HP=0;showGO('p2');return}}
   updateSpecials(dt);updateParts();updateDmg();
