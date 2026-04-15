@@ -10,7 +10,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;user-select:none}
 html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Inter',sans-serif}
-canvas{display:block;position:fixed;top:0;left:0;width:100%;height:100%;image-rendering:auto}
+canvas{display:block;position:fixed;top:0;left:0;width:100%;height:100%;image-rendering:crisp-edges;image-rendering:-webkit-optimize-contrast}
 #loadscr{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#111}
 #loadscr.done{display:none}
 .ltxt{font-family:'Bungee',cursive;font-size:.7rem;letter-spacing:4px;color:rgba(255,255,255,.4)}
@@ -52,7 +52,7 @@ canvas{display:block;position:fixed;top:0;left:0;width:100%;height:100%;image-re
 <button class="mb mb1" onclick="startSP()">Battle</button>
 <button class="mb mb2" onclick="showScr('scr-cr')">Create Room</button>
 <button class="mb mb2" onclick="showScr('scr-jr')">Join Room</button>
-<div class="dr"><button class="db active" onclick="setDiff('easy',this)">Easy</button><button class="db" onclick="setDiff('normal',this)">Normal</button><button class="db" onclick="setDiff('hard',this)">Hard</button></div></div>
+<div class="dr"><button class="db active" onclick="setDiff('easy',this)">Easy</button><button class="db" onclick="setDiff('normal',this)">Normal</button><button class="db" onclick="setDiff('hard',this)">Hard</button><button class="db" onclick="setDiff('impossible',this)">Impossible</button></div></div>
 <div id="scr-cr" class="scr"><p class="st">Your room code</p><div class="rcd" id="rcd">----</div><p class="st" id="crs">Creating...</p><button class="mb mb2 mbs" onclick="copyRC()">Copy Code</button><button class="mb mb2 mbs" onclick="cancelMP()" style="margin-top:5px">Back</button></div>
 <div id="scr-jr" class="scr"><p class="st">Enter Room Code</p><input class="ri" id="ji" maxlength="4" placeholder="XXXX" onkeyup="this.value=this.value.toUpperCase()"/><div style="margin-top:10px"><button class="mb mb1 mbs" onclick="joinRoom()">Join</button></div><p class="st" id="jrs"></p><button class="mb mb2 mbs" onclick="cancelMP()" style="margin-top:5px">Back</button></div>
 </div></div>
@@ -82,7 +82,7 @@ var AGE_NAMES=['Caveman','Medieval','Renaissance','Modern','Future'];
 var EVO_COST=[4000,14000,45000,200000];
 var BASE_HP=[500,1100,2000,3200,4700];
 var START_GOLD=175;
-var MOVE_SPD=60;
+var MOVE_SPD=50;
 var MELEE_RANGE=30,TURRET_RANGE=500;
 var SPEC_CD=60;
 var MAX_QUEUE=5;
@@ -93,24 +93,23 @@ var AGE_UNITS=[
  [['Infantry',500,80,MELEE_RANGE,.8,1500,1950,.5,false],['Gunner',350,50,190,1.2,2000,2600,1,true],['Tank',1500,300,MELEE_RANGE,1.5,7000,9100,2,false]],
  [["God's Blade",1100,160,MELEE_RANGE,.8,5000,6500,.5,false],['Blaster',600,100,200,1.2,6000,7800,1,true],['War Machine',3000,500,MELEE_RANGE,1.5,20000,26000,2,false],['Super Soldier',20000,300,200,.8,150000,0,10,true]]
 ];
-// OLD single turret removed - now using 3 types per age
-// Turret data: [age][type] = [dmg, range, atkSpd, cost]
+// Turret data matched to original: [age][type] = [dmg, range, atkSpd, cost]
 var TURRET_DATA=[
- [[12,400,1.5,50],[18,350,1.2,80],[30,300,2.0,120]],       // Cave: sling, catapult, dino launcher
- [[30,450,1.5,200],[45,400,1.0,350],[70,350,2.0,500]],      // Medieval: crossbow, ballista, trebuchet
- [[80,500,1.5,1200],[110,450,1.0,2000],[160,400,1.8,3000]], // Knight: cannon, mortar, bombard
- [[100,550,1.2,4000],[130,500,.8,6500],[200,450,1.5,9000]], // Military: MG, launcher, artillery
- [[90,600,.8,10000],[120,550,.6,16000],[180,500,1.0,24000]]  // Future: laser, plasma, railgun
+ [[15,400,1.5,100],[2,300,0.3,200],[40,500,2.0,500]],         // Cave: Rock Sling, Egg Auto, Catapult
+ [[40,500,1.5,500],[60,500,1.5,750],[300,500,2.5,1000]],      // Knight: Catapult, Fire Catapult, Oil
+ [[60,600,1.2,1500],[120,600,1.5,3000],[120,600,2.0,6000]],   // Medieval: Small Cannon, Large Cannon, Explosive
+ [[60,600,0.3,7500],[120,600,1.2,9000],[80,600,0.3,14000]],   // Military: MG Turret, Rocket, Double Turret
+ [[100,700,0.8,24000],[50,700,0.2,40000],[50,700,0.6,100000]] // Future: Titanium, Laser, Ion Cannon
 ];
 var SLOT_COST=[200,600,1500]; // cost for tower slot 1, 2, 3
 var TURRET_NAMES=[
- ['Sling','Catapult','Dino Launcher'],['Crossbow','Ballista','Trebuchet'],
- ['Cannon','Mortar','Bombard'],['MG','Launcher','Artillery'],
- ['Laser','Plasma','Railgun']
+ ['Rock Sling','Egg Auto','Catapult'],['Catapult','Fire Cat.','Oil Pot'],
+ ['Sm. Cannon','Lg. Cannon','Explosive'],['MG Turret','Rocket','Dbl. Turret'],
+ ['Titanium','Laser','Ion Cannon']
 ];
 var SPECIALS=[['Rock Rain','rain',25,80],['Arrow Storm','rain',35,150],['Healing','heal',0,30],['Bombing Run','bomb',10,500],['Laser Sweep','laser',20,600]];
 var AI_AGE_TIME=[180,200,220,240];
-var DIFF_MULT={easy:.8,normal:1,hard:1.25};
+var DIFF_MULT={easy:.8,normal:1,hard:1.25,impossible:1.5};
 
 // ===== SPRITE SYSTEM =====
 var SP={};
@@ -170,28 +169,47 @@ var hoverBtn=-1;
 var bgMusic=null,ac=null;
 
 // ===== AUDIO =====
-function initAudio(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)}
-function snd(t){if(!ac)return;var n=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);if(t==='hit'){o.type='square';o.frequency.setValueAtTime(180,n);o.frequency.exponentialRampToValueAtTime(80,n+.08);g.gain.setValueAtTime(.08,n);g.gain.exponentialRampToValueAtTime(.001,n+.1);o.start(n);o.stop(n+.1)}else if(t==='shoot'){o.type='sine';o.frequency.setValueAtTime(800,n);o.frequency.exponentialRampToValueAtTime(400,n+.12);g.gain.setValueAtTime(.05,n);g.gain.exponentialRampToValueAtTime(.001,n+.12);o.start(n);o.stop(n+.12)}else if(t==='die'){o.type='sawtooth';o.frequency.setValueAtTime(200,n);o.frequency.exponentialRampToValueAtTime(50,n+.25);g.gain.setValueAtTime(.06,n);g.gain.exponentialRampToValueAtTime(.001,n+.25);o.start(n);o.stop(n+.25)}else if(t==='spawn'){o.type='triangle';o.frequency.setValueAtTime(300,n);o.frequency.exponentialRampToValueAtTime(500,n+.08);g.gain.setValueAtTime(.04,n);g.gain.exponentialRampToValueAtTime(.001,n+.1);o.start(n);o.stop(n+.1)}else if(t==='evolve'){[261,329,392,523,659].forEach(function(fr,i){var oo=ac.createOscillator(),gg=ac.createGain();oo.connect(gg);gg.connect(ac.destination);oo.type='sine';oo.frequency.setValueAtTime(fr,n+i*.12);gg.gain.setValueAtTime(.07,n+i*.12);gg.gain.exponentialRampToValueAtTime(.001,n+i*.12+.25);oo.start(n+i*.12);oo.stop(n+i*.12+.25)});return}else if(t==='special'){o.type='sawtooth';o.frequency.setValueAtTime(100,n);o.frequency.exponentialRampToValueAtTime(40,n+.5);g.gain.setValueAtTime(.1,n);g.gain.exponentialRampToValueAtTime(.001,n+.5);o.start(n);o.stop(n+.5)}else if(t==='basehit'){o.type='square';o.frequency.setValueAtTime(100,n);o.frequency.exponentialRampToValueAtTime(50,n+.15);g.gain.setValueAtTime(.09,n);g.gain.exponentialRampToValueAtTime(.001,n+.15);o.start(n);o.stop(n+.15)}else if(t==='win'){[261,329,392,523].forEach(function(fr,i){var oo=ac.createOscillator(),gg=ac.createGain();oo.connect(gg);gg.connect(ac.destination);oo.type='sine';oo.frequency.setValueAtTime(fr,n+i*.18);gg.gain.setValueAtTime(.09,n+i*.18);gg.gain.exponentialRampToValueAtTime(.001,n+i*.18+.35);oo.start(n+i*.18);oo.stop(n+i*.18+.35)});return}else if(t==='lose'){o.type='sawtooth';o.frequency.setValueAtTime(300,n);o.frequency.exponentialRampToValueAtTime(60,n+.7);g.gain.setValueAtTime(.07,n);g.gain.exponentialRampToValueAtTime(.001,n+.7);o.start(n);o.stop(n+.7)}}
+// ===== AUDIO (real sound effects from original game) =====
+var sfxPool={};
+function initAudio(){}
+function playSfx(file,vol){
+  if(!sfxPool[file]){sfxPool[file]=[];for(var i=0;i<3;i++){var a=new Audio('sfx/'+file);a.volume=vol||.35;sfxPool[file].push(a)}}
+  var pool=sfxPool[file];
+  for(var i=0;i<pool.length;i++){if(pool[i].paused||pool[i].ended){pool[i].currentTime=0;pool[i].volume=vol||.35;pool[i].play().catch(function(){});return}}
+  // all busy, clone
+  var a=new Audio('sfx/'+file);a.volume=vol||.35;a.play().catch(function(){});sfxPool[file].push(a);
+}
+function snd(t){
+  if(t==='hit'){var r=Math.random();if(r<.33)playSfx('stab_01.mp3',.25);else if(r<.66)playSfx('stab_02.mp3',.25);else playSfx('whack_01.mp3',.25)}
+  else if(t==='shoot'){playSfx(Math.random()<.5?'whoosh_01.mp3':'whoosh_02.mp3',.2)}
+  else if(t==='die'){playSfx('die_0'+(1+Math.floor(Math.random()*5))+'.mp3',.3)}
+  else if(t==='basehit'){playSfx(Math.random()<.5?'explosion_01.mp3':'explosion_02.mp3',.3)}
+  else if(t==='special'){playSfx('miltary_special_attack.mp3',.4)}
+  else if(t==='evolve'){playSfx('sword_clash_01.mp3',.4)}
+  else if(t==='spawn'){playSfx('sword_clash_02.mp3',.15)}
+}
 function startMusic(){if(!bgMusic){bgMusic=new Audio('Waterflame - Glorious Morning Extended.mp3');bgMusic.loop=true;bgMusic.volume=.4}bgMusic.currentTime=0;bgMusic.play().catch(function(){})}
 function stopMusic(){if(bgMusic){bgMusic.pause();bgMusic.currentTime=0}}
 
-// ===== CANVAS (fullscreen) =====
+// ===== CANVAS (fullscreen, native resolution) =====
 function setupCanvas(){
   C=document.getElementById('gc');X=C.getContext('2d');
   function rz(){
     var sw=window.innerWidth,sh=window.innerHeight;
     var dpr=window.devicePixelRatio||1;
-    // Use device pixel ratio for crisp rendering on high-DPI screens
+    // Calculate game logical size (maintains aspect ratio)
     var aspect=W/H;
     var screenAspect=sw/sh;
     var cw,ch;
     if(screenAspect>aspect){ch=H;cw=Math.round(H*screenAspect);}
     else{cw=W;ch=Math.round(W/screenAspect);}
-    // Scale up for high-DPI
-    C.width=Math.round(cw*dpr);C.height=Math.round(ch*dpr);
+    // Canvas physical = NATIVE screen resolution (no browser upscaling!)
+    C.width=Math.round(sw*dpr);C.height=Math.round(sh*dpr);
     C.style.width=sw+'px';C.style.height=sh+'px';
-    X.setTransform(dpr,0,0,dpr,0,0);
-    viewScale=cw/sw;
+    // Transform: map game coords -> physical pixels
+    var gameScale=sw/cw; // CSS px per game unit
+    X.setTransform(dpr*gameScale,0,0,dpr*gameScale,0,0);
+    viewScale=cw/sw; // game units per CSS px (for mouse input)
     cW=cw;cH=ch;
     X.imageSmoothingEnabled=false;
   }
@@ -330,20 +348,23 @@ function drawUnit(u){
   if(!sheet)return;
   var fw=SHEET_FW[u.age][spTier];
   var fh=SHEET_H;
-  // Animation frame
-  var animSpd=3;
+  // Animation frame - use time-based animation to prevent flickering
+  var animSpd=6; // slower = smoother animation
   var fi;
-  if(u.st==='attack')fi=N_WALK+((u.fr/animSpd|0)%N_ATK);
-  else fi=(u.fr/animSpd|0)%N_WALK;
+  if(u.st==='attack'){
+    fi=N_WALK+((u.fr/animSpd|0)%N_ATK);
+  }else{
+    // walk and idle both use walk frames
+    fi=(u.fr/animSpd|0)%N_WALK;
+    if(u.st==='idle')fi=(u.fr/(animSpd*2)|0)%N_WALK; // idle = slow walk anim
+  }
   var srcX=fi*fw,srcY=0;
-  // Display size - CONSISTENT regardless of state
+  // Display size - use walk-frame proportions for CONSISTENT size
+  // Use reference width from first walk frame to prevent size changes
   var dH=u.tier>=3?SUPER_H:UNIT_H[u.age][spTier];
   var scale=dH/fh;
   var dW=fw*scale;
-  // Keep unit size consistent: use same dW for walk and attack
-  // This prevents visual "shrinking" when switching states
-  var bob=u.st==='walk'?Math.sin(u.fr*.12)*1.5:0;
-  var dy=GY-dH+bob;
+  var dy=GY-dH;
   X.save();
   if(u.team===2){
     X.translate(sx,0);X.scale(-1,1);
@@ -354,7 +375,7 @@ function drawUnit(u){
   X.restore();
   // HP bar
   if(u.hp<u.mhp){
-    var bw=Math.max(24,dW*.55),by=dy-7+bob;
+    var bw=Math.max(24,dW*.45),by=dy-7;
     X.fillStyle='#000';X.fillRect(sx-bw/2-1,by-1,bw+2,6);
     X.fillStyle='#444';X.fillRect(sx-bw/2,by,bw,4);
     X.fillStyle=u.hp/u.mhp>.3?'#2ECC71':'#E74C3C';
@@ -472,24 +493,46 @@ function updateUnits(dt){
   for(var i=0;i<us.length;i++){if(us[i].team===1)t1.push(us[i]);else t2.push(us[i])}
   t1.sort(function(a,b){return b.x-a.x});
   t2.sort(function(a,b){return a.x-b.x});
-  var front1=t1[0],front2=t2[0];
   for(var i=0;i<us.length;i++){var u=us[i];u.fr++;var dir=u.team===1?1:-1;
+    // Clamp position: units cannot walk past enemy base
+    if(u.team===1&&u.x>E_BASE_X)u.x=E_BASE_X;
+    if(u.team===2&&u.x<P_BASE_X)u.x=P_BASE_X;
+    // Find nearest enemy (not just frontmost)
+    var nearEnemy=null,nearDist=1e9;
+    var enemies=u.team===1?t2:t1;
+    for(var j=0;j<enemies.length;j++){var d=Math.abs(u.x-enemies[j].x);if(d<nearDist){nearDist=d;nearEnemy=enemies[j]}}
+    // Check friendly unit blocking ahead
     var ahead=null;
-    if(u.team===1){for(var j=0;j<t1.length;j++){if(t1[j]!==u&&t1[j].x>u.x&&t1[j].x-u.x<35){ahead=t1[j];break}}}
-    else{for(var j=0;j<t2.length;j++){if(t2[j]!==u&&t2[j].x<u.x&&u.x-t2[j].x<35){ahead=t2[j];break}}}
-    var enemy=u.team===1?front2:front1;
+    var friendlies=u.team===1?t1:t2;
+    for(var j=0;j<friendlies.length;j++){var f=friendlies[j];if(f===u)continue;
+      var dx=u.team===1?(f.x-u.x):(u.x-f.x);
+      if(dx>0&&dx<35){ahead=f;break}}
+    // Base distance
     var baseTgt=u.team===1?E_BASE_X:P_BASE_X;
-    var distEnemy=enemy?Math.abs(u.x-enemy.x):Math.abs(u.x-baseTgt);
-    if(enemy&&distEnemy<=u.range){
+    var distToBase=Math.abs(u.x-baseTgt);
+    // Priority: 1) attack base if close, 2) attack enemy in range, 3) walk
+    if(distToBase<55){
       u.st='attack';u.at+=dt;
       if(u.at>=u.atkSpd){u.at=0;
-        if(u.isRanged&&distEnemy>MELEE_RANGE){proj.push({x:u.x,y:GY-25,vx:(enemy.x>u.x?5:-5),vy:-1.2,dmg:u.dmg,team:u.team,age:u.age});snd('shoot')}
-        else{enemy.hp-=u.dmg;snd('hit');mkP(enemy.x,GY-18,'#e74c3c',4);addDmg(enemy.x,GY-35,u.dmg)}}
-    }else if(!enemy&&distEnemy<60){
+        // Also damage nearby enemy if melee
+        if(nearEnemy&&nearDist<=u.range){
+          nearEnemy.hp-=u.dmg;snd('hit');mkP(nearEnemy.x,GY-18,'#e74c3c',4);addDmg(nearEnemy.x,GY-35,u.dmg);
+        }else{
+          if(u.team===1){p2HP-=u.dmg}else{p1HP-=u.dmg}
+          snd('basehit');mkP(baseTgt,GY-30,'#f39c12',5);addDmg(baseTgt,GY-45,u.dmg)}}
+    }else if(nearEnemy&&nearDist<=u.range){
       u.st='attack';u.at+=dt;
-      if(u.at>=u.atkSpd){u.at=0;if(u.team===1){p2HP-=u.dmg}else{p1HP-=u.dmg}snd('basehit');mkP(baseTgt,GY-30,'#f39c12',5);addDmg(baseTgt,GY-45,u.dmg)}
-    }else if(ahead){u.st='walk'
-    }else{u.st='walk';u.x+=MOVE_SPD*dir*dt}}
+      if(u.at>=u.atkSpd){u.at=0;
+        if(u.isRanged&&nearDist>MELEE_RANGE){proj.push({x:u.x,y:GY-25,vx:(nearEnemy.x>u.x?5:-5),vy:-1.2,dmg:u.dmg,team:u.team,age:u.age});snd('shoot')}
+        else{nearEnemy.hp-=u.dmg;snd('hit');mkP(nearEnemy.x,GY-18,'#e74c3c',4);addDmg(nearEnemy.x,GY-35,u.dmg)}}
+    }else if(ahead){
+      u.st='idle'; // blocked: don't change animation, just wait
+    }else{
+      u.st='walk';u.x+=MOVE_SPD*dir*dt;
+      // Re-clamp after movement
+      if(u.team===1&&u.x>E_BASE_X)u.x=E_BASE_X;
+      if(u.team===2&&u.x<P_BASE_X)u.x=P_BASE_X;
+    }}
   for(var i=us.length-1;i>=0;i--){if(us[i].hp<=0){snd('die');mkP(us[i].x,GY-15,'#8B4513',8);
     var rwd=us[i].reward;
     if(us[i].team===2){gold+=rwd;xp+=rwd*2}
@@ -574,7 +617,17 @@ function beginGame(){initAudio();startMusic();document.getElementById('menu').cl
   aiT=0;aiPhase=0;aiPhaseT=0;aiAgeT=0;syncT=0;specCD=0;specActive=null;tick=0;
   camX=0;camTargetX=0;
   run=true;lt=performance.now();if(af)cancelAnimationFrame(af);loop()}
-function loop(){if(!run)return;af=requestAnimationFrame(loop);var now=performance.now(),dt=Math.min((now-lt)/1e3,.05);lt=now;tick++;
+function loop(){if(!run)return;af=requestAnimationFrame(loop);
+  if(paused){
+    // Draw pause overlay
+    X.fillStyle='rgba(0,0,0,.5)';X.fillRect(0,0,cW,cH);
+    X.textAlign='center';X.font='bold 36px Bungee';X.fillStyle='#FFF';
+    X.fillText('PAUSED',cW/2,cH/2-10);
+    X.font='bold 12px Inter';X.fillStyle='rgba(255,255,255,.5)';
+    X.fillText('Press ESC to resume',cW/2,cH/2+25);
+    X.textAlign='left';return;
+  }
+  var now=performance.now(),dt=Math.min((now-lt)/1e3,.05);lt=now;tick++;
   if(specCD>0)specCD=Math.max(0,specCD-dt);
   updateCamera(dt);
   if(mode!=='guest'){updateTraining(dt);updateUnits(dt);updateProj(dt);updateTurrets(dt);updateAI(dt);bcastSync(dt);if(p2HP<=0){p2HP=0;showGO('p1');return}if(p1HP<=0){p1HP=0;showGO('p2');return}}
@@ -597,7 +650,15 @@ function copyRC(){navigator.clipboard.writeText(rc);event.target.textContent='Co
 function cancelMP(){if(ch){ch.unsubscribe();ch=null}rc=null;showScr('scr-main')}
 
 // ===== INPUT =====
-document.addEventListener('keydown',function(e){if(!run)return;var k=e.key;
+var paused=false;
+document.addEventListener('keydown',function(e){
+  // ESC to pause/unpause
+  if(e.key==='Escape'&&mode){
+    paused=!paused;
+    if(!paused){lt=performance.now();if(run)loop()}
+    return;
+  }
+  if(!run||paused)return;var k=e.key;
   if(uiMode==='units'){
     if(k==='1')spawn(0);if(k==='2')spawn(1);if(k==='3')spawn(2);if(k==='4'&&AGE_UNITS[pAge].length>3)spawn(3);
     if(k==='t'||k==='T')uiMode='turrets';
